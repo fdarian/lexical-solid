@@ -1,4 +1,3 @@
-import { Setter } from "solid-js";
 import { useLexicalComposerContext } from "./LexicalComposerContext";
 import { LexicalEditor } from "lexical";
 
@@ -10,9 +9,15 @@ import { LexicalEditor } from "lexical";
  * be positioned outside the LexicalComposer in the React tree.
  */
 export function EditorRefPlugin(props: {
-  editorRef: Setter<LexicalEditor>;
+  editorRef:
+    | ((editor: LexicalEditor) => void)
+    | { current: LexicalEditor | null | undefined };
 }): null {
   const [editor] = useLexicalComposerContext();
-  props.editorRef(editor);
+  if (typeof props.editorRef === "function") {
+    props.editorRef(editor);
+  } else {
+    props.editorRef.current = editor;
+  }
   return null;
 }
