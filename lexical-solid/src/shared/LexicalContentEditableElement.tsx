@@ -95,6 +95,8 @@ export function ContentEditableElement(props: ContentEditableElementProps): JSX.
     });
   };
 
+  onCleanup(() => editor.setRootElement(null));
+
   createEffect(() => {
     setEditable(editor.isEditable());
     onCleanup(
