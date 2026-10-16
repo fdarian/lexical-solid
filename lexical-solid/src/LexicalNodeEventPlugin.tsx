@@ -9,7 +9,7 @@ import {
 } from "lexical";
 
 import { useLexicalComposerContext } from "./LexicalComposerContext";
-import { createEffect, untrack } from "solid-js";
+import { createEffect, onCleanup, untrack } from "solid-js";
 
 const capturedEvents = new Set<string>(["mouseenter", "mouseleave"]);
 
@@ -48,16 +48,18 @@ export function NodeEventPlugin(props: {
       });
     };
 
-    return editor.registerRootListener((rootElement) => {
-      if (rootElement) {
-        return registerEventListener(
-          rootElement,
-          eventType,
-          onEvent,
-          isCaptured
-        );
-      }
-    });
+    onCleanup(
+      editor.registerRootListener((rootElement) => {
+        if (rootElement) {
+          return registerEventListener(
+            rootElement,
+            eventType,
+            onEvent,
+            isCaptured
+          );
+        }
+      })
+    );
   });
 
   return null;
