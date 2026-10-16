@@ -18,15 +18,28 @@ import { $getNearestBlockElementAncestorOrThrow } from "@lexical/utils";
 import { JSX } from "solid-js/jsx-runtime";
 import { createEffect, onCleanup } from "solid-js";
 
+type BlockClassNames = Readonly<{
+  base: string;
+  focus: string;
+}>;
+
 type Props = Readonly<{
   children: JSX.Element;
   format?: ElementFormatType | null;
   nodeKey: NodeKey;
-  classes: Readonly<{
-    base: string;
-    focus: string;
-  }>;
-}>;
+}> &
+  (
+    | {
+        className: BlockClassNames;
+        /** @deprecated Use className */
+        classes?: BlockClassNames;
+      }
+    | {
+        className?: undefined;
+        /** @deprecated Use className */
+        classes: BlockClassNames;
+      }
+  );
 
 export function BlockWithAlignableContents(props: Props): JSX.Element {
   const [editor] = useLexicalComposerContext();
@@ -35,6 +48,8 @@ export function BlockWithAlignableContents(props: Props): JSX.Element {
     props.nodeKey
   );
   let ref: HTMLDivElement | undefined;
+  const classNames = () =>
+    props.className !== undefined ? props.className : props.classes;
 
   createEffect(() => {
     onCleanup(
@@ -96,8 +111,8 @@ export function BlockWithAlignableContents(props: Props): JSX.Element {
   return (
     <div
       classList={{
-        [props.classes.base]: true,
-        [props.classes.focus]: isSelected(),
+        [classNames().base]: true,
+        [classNames().focus]: isSelected(),
       }}
       ref={ref}
       style={{

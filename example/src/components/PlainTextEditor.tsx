@@ -21,8 +21,8 @@ function Placeholder() {
 // LexicalOnChangePlugin!
 function onChange(
   editorState: EditorState,
-  _tags: Set<string>,
-  _editor: LexicalEditor
+  _editor: LexicalEditor,
+  _tags: Set<string>
 ) {
   editorState.read(() => {
     // Read the contents of the EditorState here.
@@ -52,7 +52,7 @@ export default function Editor() {
         <PlainTextPlugin
           contentEditable={<ContentEditable class="editor-input" />}
           placeholder={<Placeholder />}
-          errorBoundary={LexicalErrorBoundary}
+          ErrorBoundary={LexicalErrorBoundary}
         />
         <OnChangePlugin onChange={onChange} />
         <HistoryPlugin />

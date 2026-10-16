@@ -10,8 +10,8 @@ export function OnChangePlugin(props: {
   ignoreHistoryMergeTagChange?: boolean;
   onChange?: (
     editorState: EditorState,
-    tags: Set<string>,
-    editor: LexicalEditor
+    editor: LexicalEditor,
+    tags: Set<string>
   ) => void;
   ignoreSelectionChange?: boolean;
 }) {
@@ -45,7 +45,7 @@ export function OnChangePlugin(props: {
               return;
             }
 
-            props.onChange!(editorState, tags, editor);
+            props.onChange!(editorState, editor, tags);
           }
         )
       );

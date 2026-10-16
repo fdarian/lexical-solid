@@ -29,8 +29,8 @@ function Placeholder() {
 // LexicalOnChangePlugin!
 function onChange(
   editorState: EditorState,
-  tags: Set<string>,
-  editor: LexicalEditor
+  _editor: LexicalEditor,
+  _tags: Set<string>
 ) {
   editorState.read(() => {
     // Read the contents of the EditorState here.
@@ -74,7 +74,7 @@ export default function Editor() {
           <RichTextPlugin
             contentEditable={<ContentEditable class="editor-input" />}
             placeholder={<Placeholder />}
-            errorBoundary={LexicalErrorBoundary}
+            ErrorBoundary={LexicalErrorBoundary}
           />
           <LinkPlugin />
           <AutoFocusPlugin />

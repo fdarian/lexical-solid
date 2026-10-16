@@ -12,10 +12,23 @@ export function PlainTextPlugin(params: {
     | ((isEditable: boolean) => null | JSX.Element)
     | null
     | JSX.Element;
-  errorBoundary: ErrorBoundaryType;
-}): JSX.Element {
+} & (
+  | {
+      ErrorBoundary: ErrorBoundaryType;
+      /** @deprecated Use ErrorBoundary */
+      errorBoundary?: ErrorBoundaryType;
+    }
+  | {
+      ErrorBoundary?: undefined;
+      /** @deprecated Use ErrorBoundary */
+      errorBoundary: ErrorBoundaryType;
+    }
+)): JSX.Element {
   const [editor] = useLexicalComposerContext();
-  const decorators = useDecorators(editor, params.errorBoundary);
+  const decorators = useDecorators(
+    editor,
+    params.ErrorBoundary !== undefined ? params.ErrorBoundary : params.errorBoundary
+  );
   usePlainTextSetup(editor);
 
   return (

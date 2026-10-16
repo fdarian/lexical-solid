@@ -29,12 +29,12 @@ import { createEffect, createSignal, onCleanup } from "solid-js";
 
 export function TreeView(props: {
   editor: LexicalEditor;
-  treeTypeButtonClassName: string;
-  timeTravelButtonClassName: string;
-  timeTravelPanelButtonClassName: string;
-  timeTravelPanelClassName: string;
-  timeTravelPanelSliderClassName: string;
-  viewClassName: string;
+  treeTypeButtonClassName?: string;
+  timeTravelButtonClassName?: string;
+  timeTravelPanelButtonClassName?: string;
+  timeTravelPanelClassName?: string;
+  timeTravelPanelSliderClassName?: string;
+  viewClassName?: string;
   customPrintNode?: CustomPrintNodeFn;
 }): JSX.Element {
   const [treeElementRef, setTreeElementRef] =
