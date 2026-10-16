@@ -101,6 +101,9 @@ importers:
       '@lexical/dragon':
         specifier: ~0.52.0
         version: 0.52.0(typescript@5.6.3)
+      '@lexical/extension':
+        specifier: ~0.52.0
+        version: 0.52.0(typescript@5.6.3)
       '@lexical/hashtag':
         specifier: ~0.52.0
         version: 0.52.0(typescript@5.6.3)

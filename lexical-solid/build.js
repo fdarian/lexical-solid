@@ -86,7 +86,7 @@ for (const module of lexicalSolidModules) {
 const program = ts.createProgram(lexicalSolidModules.map(module => module.sourceFileName), {
   target: ts.ScriptTarget.ESNext,
   module: ts.ModuleKind.ESNext,
-  moduleResolution: ts.ModuleResolutionKind.NodeJs,
+  moduleResolution: ts.ModuleResolutionKind.Bundler,
   jsx: ts.JsxEmit.Preserve,
   jsxImportSource: 'solid-js',
   allowSyntheticDefaultImports: true,
