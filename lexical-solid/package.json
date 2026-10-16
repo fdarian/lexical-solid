@@ -26,6 +26,9 @@
   },
   "typesVersions": {
     "*": {
+      "dist/types/*": [
+        "./dist/types/*"
+      ],
       "*": [
         "./dist/types/*.d.ts"
       ]
