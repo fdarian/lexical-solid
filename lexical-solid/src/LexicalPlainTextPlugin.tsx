@@ -12,10 +12,20 @@ export function PlainTextPlugin(params: {
     | ((isEditable: boolean) => null | JSX.Element)
     | null
     | JSX.Element;
-  errorBoundary: ErrorBoundaryType;
-}): JSX.Element {
+} & (
+  | {
+      ErrorBoundary: ErrorBoundaryType;
+      /** @deprecated Use ErrorBoundary */
+      errorBoundary?: ErrorBoundaryType;
+    }
+  | {
+      /** @deprecated Use ErrorBoundary */
+      errorBoundary: ErrorBoundaryType;
+      ErrorBoundary?: ErrorBoundaryType;
+    }
+)): JSX.Element {
   const [editor] = useLexicalComposerContext();
-  const decorators = useDecorators(editor, params.errorBoundary);
+  const decorators = useDecorators(editor, params.ErrorBoundary ?? params.errorBoundary!);
   usePlainTextSetup(editor);
 
   return (

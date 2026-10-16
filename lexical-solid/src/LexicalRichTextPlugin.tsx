@@ -13,10 +13,20 @@ export function RichTextPlugin(props: {
     | ((isEditable: boolean) => null | JSX.Element)
     | null
     | JSX.Element;
-  errorBoundary: ErrorBoundaryType;
-}): JSX.Element {
+} & (
+  | {
+      ErrorBoundary: ErrorBoundaryType;
+      /** @deprecated Use ErrorBoundary */
+      errorBoundary?: ErrorBoundaryType;
+    }
+  | {
+      /** @deprecated Use ErrorBoundary */
+      errorBoundary: ErrorBoundaryType;
+      ErrorBoundary?: ErrorBoundaryType;
+    }
+)): JSX.Element {
   const [editor] = useLexicalComposerContext();
-  const decorators = useDecorators(editor, props.errorBoundary);
+  const decorators = useDecorators(editor, props.ErrorBoundary ?? props.errorBoundary!);
   useRichTextSetup(editor);
 
   return (
