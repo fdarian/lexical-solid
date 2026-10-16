@@ -1,7 +1,6 @@
 import { useLexicalComposerContext } from "lexical-solid/LexicalComposerContext";
 import { onCleanup, onMount } from "solid-js";
-//@ts-ignore
-import { registerCodeHighlighting } from "@lexical/code";
+import { registerCodeHighlighting } from "@lexical/code-prism";
 
 export default function CodeHighlightPlugin() {
   const [editor] = useLexicalComposerContext();

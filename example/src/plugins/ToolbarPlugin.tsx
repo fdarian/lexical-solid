@@ -40,8 +40,8 @@ import {
   $createCodeNode,
   $isCodeNode,
   getDefaultCodeLanguage,
-  getCodeLanguages,
 } from "@lexical/code";
+import { getCodeLanguages } from "@lexical/code-prism";
 import { Portal } from "solid-js/web";
 import {
   createEffect,

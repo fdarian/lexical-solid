@@ -16,6 +16,9 @@ importers:
       '@lexical/code':
         specifier: 0.52.0
         version: 0.52.0(typescript@5.8.3)
+      '@lexical/code-prism':
+        specifier: 0.52.0
+        version: 0.52.0(typescript@5.8.3)
       '@lexical/dragon':
         specifier: 0.52.0
         version: 0.52.0(typescript@5.8.3)
@@ -964,6 +967,14 @@ packages:
 
   '@lexical/code-core@0.52.0':
     resolution: {integrity: sha512-4ofNvUXEal2tm6DLGHtjJUc7C1qQP2RHUO4v/RHSSdWEHLKM1kITgIUUvWkf6FHnQNrTvrL2U5vxACv2bo0HVQ==}
+    peerDependencies:
+      typescript: '>=5.2'
+    peerDependenciesMeta:
+      typescript:
+        optional: true
+
+  '@lexical/code-prism@0.52.0':
+    resolution: {integrity: sha512-RRAj+RmY4p9W4LMPNJQqw3N9/myrrevG5ptD7PsIrbPb4pbJkHNP8ol5CS8OQ1zelUqROKUfqBmDJsdzfsChGQ==}
     peerDependencies:
       typescript: '>=5.2'
     peerDependenciesMeta:
@@ -3170,6 +3181,10 @@ packages:
     resolution: {integrity: sha512-Pdlw/oPxN+aXdmM9R00JVC9WVFoCLTKJvDVLgmJ+qAffBMxsV85l/Lu7sNx4zSzPyoL2euImuEwHhOXdEgNFZQ==}
     engines: {node: ^14.15.0 || ^16.10.0 || >=18.0.0}
 
+  prismjs@1.30.0:
+    resolution: {integrity: sha512-DEvV2ZF2r2/63V+tK8hQvrR2ZGn10srHbXviTlcv7Kpzw8jWiNTqbVgjO3IY8RxrrOUF8VPMQQFysYYYv0YZxw==}
+    engines: {node: '>=6'}
+
   process-nextick-args@2.0.1:
     resolution: {integrity: sha512-3ouUOpQhtgrbOa17J7+uxOTpITYWaGP7/AhoR3+A+/1e9skrzelGi/dXzEYyvbxubEF6Wn2ypscTKiKJFFn1ag==}
 
@@ -4722,6 +4737,15 @@ snapshots:
       '@lexical/internal': 0.52.0(typescript@5.8.3)
       '@lexical/utils': 0.52.0(typescript@5.8.3)
       lexical: 0.52.0(typescript@5.8.3)
+    optionalDependencies:
+      typescript: 5.8.3
+
+  '@lexical/code-prism@0.52.0(typescript@5.8.3)':
+    dependencies:
+      '@lexical/code-core': 0.52.0(typescript@5.8.3)
+      '@lexical/extension': 0.52.0(typescript@5.8.3)
+      lexical: 0.52.0(typescript@5.8.3)
+      prismjs: 1.30.0
     optionalDependencies:
       typescript: 5.8.3
 
@@ -7337,6 +7361,8 @@ snapshots:
       '@jest/schemas': 29.6.3
       ansi-styles: 5.2.0
       react-is: 18.3.1
+
+  prismjs@1.30.0: {}
 
   process-nextick-args@2.0.1: {}
 
