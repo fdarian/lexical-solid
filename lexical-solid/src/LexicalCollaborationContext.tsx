@@ -1,8 +1,7 @@
 import { Doc } from "yjs";
-import { createContext, useContext } from "solid-js";
+import { createContext, DEV, JSX, useContext } from "solid-js";
 
 export type CollaborationContextType = {
-  clientID: number;
   color: string;
   isCollabActive: boolean;
   name: string;
@@ -28,20 +27,60 @@ const entries = [
   ["Squid", "rgb(150, 0, 150)"],
 ];
 
-const randomEntry = entries[Math.floor(Math.random() * entries.length)];
-export const CollaborationContext = createContext<CollaborationContextType>({
-  clientID: 0,
-  color: randomEntry[1],
-  isCollabActive: false,
-  name: randomEntry[0],
-  yjsDocMap: new Map(),
-});
+// Picked on first use rather than at module scope so importing this module has
+// no side effect. It is still picked once and shared by every context created
+// afterwards.
+let randomEntry: undefined | (typeof entries)[number];
+function getRandomEntry(): (typeof entries)[number] {
+  if (randomEntry === undefined) {
+    randomEntry = entries[Math.floor(Math.random() * entries.length)];
+  }
+  return randomEntry;
+}
+
+export const CollaborationContext =
+  createContext<CollaborationContextType | null>(null);
+
+export function newContext(): CollaborationContextType {
+  const [name, color] = getRandomEntry();
+  return {
+    color,
+    isCollabActive: false,
+    name,
+    yjsDocMap: new Map(),
+  };
+}
+
+// This is here to help the transition post-#7818, however should be removed in a future release as
+// a shared context across editors is likely to lead to bugs.
+const UNSAFE_GLOBAL_CONTEXT = newContext();
+
+export function LexicalCollaboration(props: {
+  children?: JSX.Element;
+}): JSX.Element {
+  const collabContext = newContext();
+
+  return (
+    <CollaborationContext.Provider value={collabContext}>
+      {props.children}
+    </CollaborationContext.Provider>
+  );
+}
 
 export function useCollaborationContext(
   username?: string,
   color?: string
 ): CollaborationContextType {
-  const collabContext = useContext(CollaborationContext);
+  let collabContext = useContext(CollaborationContext);
+  if (collabContext == null) {
+    const message = "useCollaborationContext: no context provider found";
+    if (DEV) {
+      throw new Error(message);
+    }
+    console.warn(message);
+  }
+
+  collabContext = collabContext ?? UNSAFE_GLOBAL_CONTEXT;
 
   if (username != null) {
     collabContext.name = username;
