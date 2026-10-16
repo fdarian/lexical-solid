@@ -10,22 +10,25 @@
     ".": {
       "solid": "./dist/source/index.jsx",
       "types": "./dist/types/index.d.ts",
-      "import": "./dist/esm/index.js",
       "browser": "./dist/esm/index.js",
-      "require": "./dist/cjs/index.cjs",
-      "node": "./dist/cjs/index.cjs"
+      "node": "./dist/cjs/index.cjs",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.cjs"
     },
     "./*": {
       "solid": "./dist/source/*.jsx",
       "types": "./dist/types/*.d.ts",
-      "import": "./dist/esm/*.js",
       "browser": "./dist/esm/*.js",
-      "require": "./dist/cjs/*.cjs",
-      "node": "./dist/cjs/*.cjs"
+      "node": "./dist/cjs/*.cjs",
+      "import": "./dist/esm/*.js",
+      "require": "./dist/cjs/*.cjs"
     }
   },
   "typesVersions": {
     "*": {
+      "dist/types/*": [
+        "./dist/types/*"
+      ],
       "*": [
         "./dist/types/*.d.ts"
       ]
@@ -75,12 +78,11 @@
     "rimraf": "^6.0.1",
     "rollup": "^4.24.0",
     "solid-js": "^1.9.2",
-    "typescript": "^5.6.3",
-    "utility-types": "3.11.0",
+    "typescript": "^5.8.2",
     "yjs": "^13.6.20"
   },
   "peerDependencies": {
     "solid-js": "^1.7.11",
-    "utility-types": "^3.10.0"
+    "yjs": "^13.6.20"
   }
 }

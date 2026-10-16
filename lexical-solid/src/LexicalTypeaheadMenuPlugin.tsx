@@ -371,4 +371,5 @@ export function LexicalTypeaheadMenuPlugin<TOption extends MenuOption>(
   );
 }
 
-export { MenuOption, MenuRenderFn, MenuResolution, MenuTextMatch, TriggerFn };
+export { MenuOption };
+export type { MenuRenderFn, MenuResolution, MenuTextMatch, TriggerFn };
