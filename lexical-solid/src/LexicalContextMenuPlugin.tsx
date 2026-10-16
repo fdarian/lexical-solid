@@ -51,6 +51,7 @@ export type LexicalContextMenuPluginProps<TOption extends MenuOption> = {
   onClose?: () => void;
   onWillOpen?: (event: MouseEvent) => void;
   onOpen?: (resolution: MenuResolution) => void;
+  /** @deprecated Removed from @lexical/react in v0.42.0 in favor of NodeContextMenuPlugin (not yet ported to lexical-solid). */
   menuRenderFn: ContextMenuRenderFn<TOption>;
   anchorClassName?: string;
   commandPriority?: CommandListenerPriority;
@@ -59,6 +60,7 @@ export type LexicalContextMenuPluginProps<TOption extends MenuOption> = {
 
 const PRE_PORTAL_DIV_SIZE = 1;
 
+/** @deprecated Removed from @lexical/react in v0.42.0 in favor of NodeContextMenuPlugin (not yet ported to lexical-solid). */
 export function LexicalContextMenuPlugin<TOption extends MenuOption>(
   props: LexicalContextMenuPluginProps<TOption>
 ): JSX.Element {

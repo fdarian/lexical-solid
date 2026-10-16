@@ -7,16 +7,17 @@ import {
   useMenuAnchorRef,
   LexicalMenu,
   MenuOption,
+  SCROLL_TYPEAHEAD_OPTION_INTO_VIEW_COMMAND,
 } from "./shared/LexicalMenu";
+import { getScrollParent as getScrollParent_ } from "@lexical/utils";
 import {
   $getSelection,
   $isRangeSelection,
   $isTextNode,
   COMMAND_PRIORITY_LOW,
   CommandListenerPriority,
-  createCommand,
   getDOMSelection,
-  LexicalCommand,
+  getDOMSelectionPoints,
   LexicalEditor,
   RangeSelection,
   TextNode,
@@ -43,30 +44,6 @@ export type Resolution = {
   getRect: () => DOMRect;
 };
 
-export const PUNCTUATION =
-  "\\.,\\+\\*\\?\\$\\@\\|#{}\\(\\)\\^\\-\\[\\]\\\\/!%'\"~=<>_:;";
-
-const scrollIntoViewIfNeeded = (target: HTMLElement) => {
-  const typeaheadContainerNode = document.getElementById("typeahead-menu");
-  if (!typeaheadContainerNode) return;
-
-  const typeaheadRect = typeaheadContainerNode.getBoundingClientRect();
-
-  if (typeaheadRect.top + typeaheadRect.height > window.innerHeight) {
-    typeaheadContainerNode.scrollIntoView({
-      block: "center",
-    });
-  }
-
-  if (typeaheadRect.top < 0) {
-    typeaheadContainerNode.scrollIntoView({
-      block: "center",
-    });
-  }
-
-  target.scrollIntoView({ block: "nearest" });
-};
-
 function getTextUpToAnchor(selection: RangeSelection): string | null {
   const anchor = selection.anchor;
   if (anchor.type !== "text") {
@@ -83,15 +60,17 @@ function getTextUpToAnchor(selection: RangeSelection): string | null {
 function tryToPositionRange(
   leadOffset: number,
   range: Range,
-  editorWindow: Window
+  editorWindow: Window,
+  rootElement: HTMLElement | null
 ): boolean {
   const domSelection = getDOMSelection(editorWindow);
   if (domSelection === null || !domSelection.isCollapsed) {
     return false;
   }
-  const anchorNode = domSelection.anchorNode;
+  const points = getDOMSelectionPoints(domSelection, rootElement);
+  const anchorNode = points.anchorNode;
   const startOffset = leadOffset;
-  const endOffset = domSelection.anchorOffset;
+  const endOffset = points.anchorOffset;
 
   if (anchorNode == null || endOffset == null) {
     return false;
@@ -100,7 +79,7 @@ function tryToPositionRange(
   try {
     range.setStart(anchorNode, startOffset);
     range.setEnd(anchorNode, endOffset);
-  } catch (error) {
+  } catch (_error) {
     return false;
   }
 
@@ -109,7 +88,7 @@ function tryToPositionRange(
 
 function getQueryTextForSearch(editor: LexicalEditor): string | null {
   let text = null;
-  editor.getEditorState().read(() => {
+  editor.read("latest", () => {
     const selection = $getSelection();
     if (!$isRangeSelection(selection)) {
       return;
@@ -126,7 +105,7 @@ function isSelectionOnEntityBoundary(
   if (offset !== 0) {
     return false;
   }
-  return editor.getEditorState().read(() => {
+  return editor.read("latest", () => {
     const selection = $getSelection();
     if ($isRangeSelection(selection)) {
       const anchor = selection.anchor;
@@ -138,50 +117,45 @@ function isSelectionOnEntityBoundary(
   });
 }
 
-// Got from https://stackoverflow.com/a/42543908/2013580
-export function getScrollParent(
-  element: HTMLElement,
-  includeHidden: boolean
-): HTMLElement | HTMLBodyElement {
-  let style = getComputedStyle(element);
-  const excludeStaticParent = style.position === "absolute";
-  const overflowRegex = includeHidden
-    ? /(auto|scroll|hidden)/
-    : /(auto|scroll)/;
-  if (style.position === "fixed") {
-    return document.body;
-  }
-  for (
-    let parent: HTMLElement | null = element;
-    (parent = parent.parentElement);
-
-  ) {
-    style = getComputedStyle(parent);
-    if (excludeStaticParent && style.position === "static") {
-      continue;
-    }
-    if (
-      overflowRegex.test(style.overflow + style.overflowY + style.overflowX)
-    ) {
-      return parent;
-    }
-  }
-  return document.body;
-}
-
 export { useDynamicPositioning } from "./shared/LexicalMenu";
+export { SCROLL_TYPEAHEAD_OPTION_INTO_VIEW_COMMAND };
 
-export const SCROLL_TYPEAHEAD_OPTION_INTO_VIEW_COMMAND: LexicalCommand<{
-  index: number;
-  option: MenuOption;
-}> = createCommand("SCROLL_TYPEAHEAD_OPTION_INTO_VIEW_COMMAND");
+/**
+ * The default set of punctuation characters (as a character-class fragment)
+ * that terminate a typeahead query. Used as the default `punctuation` option of
+ * {@link useBasicTypeaheadTriggerMatch}.
+ */
+export const PUNCTUATION =
+  "\\.,\\+\\*\\?\\$\\@\\|#{}\\(\\)\\^\\-\\[\\]\\\\/!%'\"~=<>_:;";
 
+/** @deprecated Moved to `@lexical/utils`. Import `getScrollParent` from there. */
+export const getScrollParent = getScrollParent_;
+
+/**
+ * Builds a {@link TriggerFn} for the common case of a single-character
+ * `trigger` (such as `@` or `#`) followed by a query. The returned function
+ * matches when the trigger is preceded by whitespace, an open parenthesis,
+ * or the start of the line
+ * and is followed by between `minLength` and `maxLength` non-`punctuation`
+ * characters (optionally allowing whitespace).
+ */
 export function useBasicTypeaheadTriggerMatch(
   trigger: string,
-  { minLength = 1, maxLength = 75 }: { minLength?: number; maxLength?: number }
+  {
+    minLength = 1,
+    maxLength = 75,
+    punctuation = PUNCTUATION,
+    allowWhitespace = false,
+  }: {
+    minLength?: number;
+    maxLength?: number;
+    punctuation?: string;
+    allowWhitespace?: boolean;
+  }
 ): TriggerFn {
   return (text: string) => {
-    const validChars = "[^" + trigger + PUNCTUATION + "\\s]";
+    const validCharsSuffix = allowWhitespace ? "" : "\\s";
+    const validChars = "[^" + trigger + punctuation + validCharsSuffix + "]";
     const TypeaheadTriggerRegex = new RegExp(
       "(^|\\s|\\()(" +
         "[" +
@@ -219,51 +193,102 @@ export type TypeaheadMenuPluginProps<TOption extends MenuOption> = {
     matchingString: string
   ) => void;
   options: Array<TOption>;
-  menuRenderFn: MenuRenderFn<TOption>;
   triggerFn: TriggerFn;
+  menuRenderFn?: MenuRenderFn<TOption>;
   onOpen?: (resolution: MenuResolution) => void;
-  onClose?: () => void;
+  onClose?: () => void | PromiseLike<void>;
   anchorClassName?: string;
   commandPriority?: CommandListenerPriority;
   parent?: HTMLElement;
   preselectFirstItem?: boolean;
+  ignoreEntityBoundary?: boolean;
 };
 
+/**
+ * Renders a floating menu (such as an `@`-mention or slash-command picker) while
+ * the text before the cursor matches `triggerFn`. As the user types, the
+ * current query is reported via `onQueryChange`; supply the `options` to show
+ * and an `onSelectOption` handler to apply the chosen option. Use
+ * {@link useBasicTypeaheadTriggerMatch} to build a simple `triggerFn`.
+ */
 export function LexicalTypeaheadMenuPlugin<TOption extends MenuOption>(
   props: TypeaheadMenuPluginProps<TOption>
 ): JSX.Element | null {
   const [editor] = useLexicalComposerContext();
   const [resolution, setResolution] = createSignal<MenuResolution | null>(null);
+  let openGeneration = 0;
+  // Whether the menu is open as far as onOpen/onClose are concerned. Unlike
+  // `resolution`, this sees an open whose transition has not rendered yet and
+  // a close whose onClose promise is still pending.
+  let isOpen = false;
+
+  const closeTypeahead = () => {
+    if (!isOpen) {
+      return;
+    }
+    isOpen = false;
+    const closingGeneration = openGeneration;
+    const finish = () => {
+      if (openGeneration === closingGeneration) {
+        setResolution(null);
+      }
+    };
+    let result: void | PromiseLike<void> | undefined;
+    try {
+      result = props.onClose && props.onClose();
+    } finally {
+      if (result) {
+        result.then(finish, finish);
+      } else {
+        finish();
+      }
+    }
+  };
+
+  const openTypeahead = (res: MenuResolution) => {
+    // Track pending opens before their transition has rendered.
+    openGeneration++;
+    setResolution(res);
+    if (!isOpen) {
+      isOpen = true;
+      if (props.onOpen != null) {
+        props.onOpen(res);
+      }
+    }
+  };
+
+  // LexicalMenu hides the menu when its anchor scrolls out of view. Route
+  // that through closeTypeahead so onClose still pairs with onOpen.
+  const setMenuResolution = (res: MenuResolution | null) => {
+    if (res === null) {
+      closeTypeahead();
+    } else {
+      setResolution(res);
+    }
+  };
   const anchorElementRef = useMenuAnchorRef(
     resolution,
-    setResolution,
+    setMenuResolution,
     props.anchorClassName,
     props.parent
   );
 
-  const closeTypeahead = () => {
-    if (props.onClose != null && resolution() !== null) {
-      props.onClose();
-    }
-    setResolution(null);
-  };
-
-  const openTypeahead = (res: MenuResolution) => {
-    if (props.onOpen != null && resolution() === null) {
-      props.onOpen(res);
-    }
-    setResolution(res);
-  };
-
   createEffect(
     on(resolution, () => {
       const updateListener = () => {
-        editor.getEditorState().read(() => {
+        editor.read("latest", () => {
           // Check if editor is in read-only mode
           if (!editor.isEditable()) {
             closeTypeahead();
             return;
           }
+
+          const closeUnlessComposing = () => {
+            if (!editor.isComposing()) {
+              closeTypeahead();
+            }
+          };
+
           const editorWindow = editor._window || window;
           const range = editorWindow.document.createRange();
           const selection = $getSelection();
@@ -275,7 +300,7 @@ export function LexicalTypeaheadMenuPlugin<TOption extends MenuOption>(
             text === null ||
             range === null
           ) {
-            closeTypeahead();
+            closeUnlessComposing();
             return;
           }
 
@@ -284,14 +309,16 @@ export function LexicalTypeaheadMenuPlugin<TOption extends MenuOption>(
 
           if (
             match !== null &&
-            !isSelectionOnEntityBoundary(editor, match.leadOffset)
+            (props.ignoreEntityBoundary ||
+              !isSelectionOnEntityBoundary(editor, match.leadOffset))
           ) {
             const isRangePositioned = tryToPositionRange(
               match.leadOffset,
               range,
-              editorWindow
+              editorWindow,
+              editor.getRootElement()
             );
-            if (isRangePositioned !== null) {
+            if (isRangePositioned) {
               startTransition(() =>
                 openTypeahead({
                   getRect: () => range.getBoundingClientRect(),
@@ -301,7 +328,7 @@ export function LexicalTypeaheadMenuPlugin<TOption extends MenuOption>(
               return;
             }
           }
-          closeTypeahead();
+          closeUnlessComposing();
         });
       };
 
@@ -325,23 +352,21 @@ export function LexicalTypeaheadMenuPlugin<TOption extends MenuOption>(
   });
 
   return (
-    <Show
-      when={
-        anchorElementRef.current && resolution() !== null && editor !== null
-      }
-    >
-      <LexicalMenu<TOption>
-        close={closeTypeahead}
-        resolution={resolution()!}
-        editor={editor}
-        anchorElementRef={anchorElementRef}
-        options={props.options}
-        menuRenderFn={props.menuRenderFn}
-        onSelectOption={props.onSelectOption}
-        shouldSplitNodeWithQuery={true}
-        commandPriority={props.commandPriority ?? COMMAND_PRIORITY_LOW}
-        preselectFirstItem={props.preselectFirstItem ?? true}
-      />
+    <Show when={anchorElementRef.current !== null ? resolution() : null}>
+      {(currentResolution) => (
+        <LexicalMenu<TOption>
+          close={closeTypeahead}
+          resolution={currentResolution()}
+          editor={editor}
+          anchorElementRef={anchorElementRef}
+          options={props.options}
+          menuRenderFn={props.menuRenderFn}
+          onSelectOption={props.onSelectOption}
+          shouldSplitNodeWithQuery={true}
+          commandPriority={props.commandPriority ?? COMMAND_PRIORITY_LOW}
+          preselectFirstItem={props.preselectFirstItem ?? true}
+        />
+      )}
     </Show>
   );
 }

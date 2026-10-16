@@ -33,7 +33,7 @@ export type NodeMenuPluginProps<TOption extends MenuOption> = {
   nodeKey: NodeKey | null;
   onClose?: () => void;
   onOpen?: (resolution: MenuResolution) => void;
-  menuRenderFn: MenuRenderFn<TOption>;
+  menuRenderFn?: MenuRenderFn<TOption>;
   anchorClassName?: string;
   commandPriority?: CommandListenerPriority;
   parent?: HTMLElement;
@@ -71,7 +71,7 @@ export function LexicalNodeMenuPlugin<TOption extends MenuOption>(
         const node = $getNodeByKey(props.nodeKey!);
         const domElement = editor.getElementByKey(props.nodeKey!);
         if (node != null && domElement != null) {
-          if (resolution == null) {
+          if (resolution() === null) {
             startTransition(() =>
               openNodeMenu({
                 getRect: () => domElement.getBoundingClientRect(),
@@ -98,21 +98,19 @@ export function LexicalNodeMenuPlugin<TOption extends MenuOption>(
   });
 
   return (
-    <Show
-      when={
-        anchorElementRef.current && resolution() !== null && editor !== null
-      }
-    >
-      <LexicalMenu
-        close={closeNodeMenu}
-        resolution={resolution()!}
-        editor={editor}
-        anchorElementRef={anchorElementRef}
-        options={props.options}
-        menuRenderFn={props.menuRenderFn}
-        onSelectOption={props.onSelectOption}
-        commandPriority={props.commandPriority ?? COMMAND_PRIORITY_LOW}
-      />
+    <Show when={anchorElementRef.current !== null ? resolution() : null}>
+      {(currentResolution) => (
+        <LexicalMenu
+          close={closeNodeMenu}
+          resolution={currentResolution()}
+          editor={editor}
+          anchorElementRef={anchorElementRef}
+          options={props.options}
+          menuRenderFn={props.menuRenderFn}
+          onSelectOption={props.onSelectOption}
+          commandPriority={props.commandPriority ?? COMMAND_PRIORITY_LOW}
+        />
+      )}
     </Show>
   );
 }
