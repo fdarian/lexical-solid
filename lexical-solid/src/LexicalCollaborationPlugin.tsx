@@ -111,7 +111,10 @@ export function CollaborationPlugin(props: Props): JSX.Element {
     }
     currentProvider = newProvider;
     setProvider(newProvider);
-    setDoc(yjsDocMap.get(id));
+    // Untracked: yjsDocMap is reactive, and @lexical/yjs writes to it (nested
+    // editors' subdocs). Tracking it would re-run this effect, calling the
+    // factory again and replacing the provider on every such write.
+    setDoc(untrack(() => yjsDocMap.get(id)));
   });
 
   onCleanup(() => {
@@ -134,7 +137,7 @@ export function CollaborationPlugin(props: Props): JSX.Element {
     }
 
     const id = props.id;
-    const resolvedDoc = doc() || yjsDocMap.get(id);
+    const resolvedDoc = doc() || untrack(() => yjsDocMap.get(id));
     if (!resolvedDoc) {
       return;
     }
