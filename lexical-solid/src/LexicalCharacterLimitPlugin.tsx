@@ -45,7 +45,7 @@ function DefaultRenderer(props: { remainingCharacters: number }) {
 export function CharacterLimitPlugin(props: {
   charset: "UTF-8" | "UTF-16";
   maxLength: number;
-  renderer: Component<{ remainingCharacters: number }>;
+  renderer?: Component<{ remainingCharacters: number }>;
 }): JSX.Element {
   props = mergeProps(
     {
