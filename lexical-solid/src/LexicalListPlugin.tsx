@@ -11,10 +11,18 @@ export interface ListPluginProps {
    * When `false` (default), indentation is more flexible.
    */
   hasStrictIndent?: boolean;
+  /**
+   * When `true`, splitting a numbered list will preserve the numbering continuity.
+   * When `false` (default), the new split list resets to 1.
+   */
+  shouldPreserveNumbering?: boolean;
 }
 
 export function ListPlugin(props: ListPluginProps): null {
-  props = mergeProps({ hasStrictIndent: false }, props);
+  const mergedProps = mergeProps(
+    { hasStrictIndent: false, shouldPreserveNumbering: false },
+    props
+  );
   const [editor] = useLexicalComposerContext();
 
   createEffect(() => {
@@ -26,13 +34,17 @@ export function ListPlugin(props: ListPluginProps): null {
   });
 
   createEffect(() => {
-    if (!props.hasStrictIndent) {
+    if (!mergedProps.hasStrictIndent) {
       return;
     }
     onCleanup(registerListStrictIndentTransform(editor));
   });
 
-  useList(editor);
+  // Upstream calls registerList in the plugin and again (default options) in useList.
+  // Passing the options through useList registers it exactly once.
+  useList(editor, () => ({
+    restoreNumbering: mergedProps.shouldPreserveNumbering,
+  }));
 
   return null;
 }

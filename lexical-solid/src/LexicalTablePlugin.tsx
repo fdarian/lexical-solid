@@ -1,10 +1,13 @@
+import { signal } from "@lexical/extension";
 import {
+  $isScrollableTablesActive,
   TableCellNode,
   setScrollableTablesActive,
   registerTablePlugin,
   registerTableSelectionObserver,
   registerTableCellUnmergeTransform,
 } from "@lexical/table";
+import { $fullReconcile } from "lexical";
 import { useLexicalComposerContext } from "./LexicalComposerContext";
 import {
   onCleanup,
@@ -33,6 +36,12 @@ export interface TablePluginProps {
    * When `true` (default `false`), tables will be wrapped in a `<div>` to enable horizontal scrolling
    */
   hasHorizontalScroll?: boolean;
+  /**
+   * When `true` (default `false`), nested tables will be allowed.
+   *
+   * @experimental Nested tables are not officially supported.
+   */
+  hasNestedTables?: boolean;
 }
 
 /**
@@ -47,15 +56,32 @@ export function TablePlugin(props: TablePluginProps): JSX.Element | null {
       hasCellMerge: true,
       hasCellBackgroundColor: true,
       hasHorizontalScroll: false,
+      hasNestedTables: false,
     },
     props
   );
   const [editor] = useLexicalComposerContext();
   createEffect(() => {
-    setScrollableTablesActive(editor, mergedProps.hasHorizontalScroll);
+    const hasHorizontalScroll = mergedProps.hasHorizontalScroll;
+    if ($isScrollableTablesActive(editor) !== hasHorizontalScroll) {
+      setScrollableTablesActive(editor, hasHorizontalScroll);
+      // Re-render existing tables through the new scroll-wrapper config without
+      // cloning every TableNode the way marking them dirty would. A full
+      // reconcile marks no nodes dirty, so it's deferred and produces no history entry.
+      editor.update($fullReconcile);
+    }
   });
 
-  onMount(() => onCleanup(registerTablePlugin(editor)));
+  const hasNestedTablesSignal = signal(mergedProps.hasNestedTables);
+  createEffect(() => {
+    hasNestedTablesSignal.value = mergedProps.hasNestedTables;
+  });
+
+  onMount(() =>
+    onCleanup(
+      registerTablePlugin(editor, { hasNestedTables: hasNestedTablesSignal })
+    )
+  );
 
   createEffect(() =>
     onCleanup(registerTableSelectionObserver(editor, props.hasTabHandler))

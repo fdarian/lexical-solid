@@ -1,4 +1,8 @@
-import type { EditorState, LexicalEditor } from "lexical";
+import {
+  HISTORY_MERGE_TAG,
+  type EditorState,
+  type LexicalEditor,
+} from "lexical";
 import { createEffect, mergeProps, onCleanup } from "solid-js";
 import { useLexicalComposerContext } from "./LexicalComposerContext";
 
@@ -35,7 +39,7 @@ export function OnChangePlugin(props: {
                 dirtyElements.size === 0 &&
                 dirtyLeaves.size === 0) ||
               (props.ignoreHistoryMergeTagChange &&
-                tags.has("history-merge")) ||
+                tags.has(HISTORY_MERGE_TAG)) ||
               prevEditorState.isEmpty()
             ) {
               return;

@@ -2,10 +2,14 @@ import { createEffect, onCleanup } from "solid-js";
 import { useLexicalComposerContext } from "./LexicalComposerContext";
 import { selectionAlwaysOnDisplay } from "@lexical/utils";
 
-export function SelectionAlwaysOnDisplay(): null {
+type Props = Readonly<{
+  onReposition?: (node: readonly HTMLElement[]) => void;
+}>;
+
+export function SelectionAlwaysOnDisplay(props: Props): null {
   const [editor] = useLexicalComposerContext();
   createEffect(() => {
-    onCleanup(selectionAlwaysOnDisplay(editor));
+    onCleanup(selectionAlwaysOnDisplay(editor, props.onReposition));
   });
 
   return null;
