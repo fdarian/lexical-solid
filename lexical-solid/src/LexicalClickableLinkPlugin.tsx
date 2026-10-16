@@ -3,7 +3,7 @@ import { registerClickableLink } from "@lexical/link";
 import { createEffect, mergeProps, onCleanup, onMount } from "solid-js";
 import { useLexicalComposerContext } from "./LexicalComposerContext";
 
-export function LexicalClickableLinkPlugin(props: {
+export function ClickableLinkPlugin(props: {
   newTab?: boolean;
   disabled?: boolean;
 }): null {
@@ -24,3 +24,6 @@ export function LexicalClickableLinkPlugin(props: {
 
   return null;
 }
+
+/** @deprecated Use ClickableLinkPlugin */
+export const LexicalClickableLinkPlugin = ClickableLinkPlugin;
