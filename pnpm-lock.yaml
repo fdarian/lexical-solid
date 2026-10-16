@@ -97,64 +97,64 @@ importers:
     dependencies:
       '@lexical/clipboard':
         specifier: ~0.52.0
-        version: 0.52.0(typescript@5.6.3)
+        version: 0.52.0(typescript@5.8.3)
       '@lexical/code':
         specifier: ~0.52.0
-        version: 0.52.0(typescript@5.6.3)
+        version: 0.52.0(typescript@5.8.3)
       '@lexical/dragon':
         specifier: ~0.52.0
-        version: 0.52.0(typescript@5.6.3)
+        version: 0.52.0(typescript@5.8.3)
       '@lexical/extension':
         specifier: ~0.52.0
-        version: 0.52.0(typescript@5.6.3)
+        version: 0.52.0(typescript@5.8.3)
       '@lexical/hashtag':
         specifier: ~0.52.0
-        version: 0.52.0(typescript@5.6.3)
+        version: 0.52.0(typescript@5.8.3)
       '@lexical/history':
         specifier: ~0.52.0
-        version: 0.52.0(typescript@5.6.3)
+        version: 0.52.0(typescript@5.8.3)
       '@lexical/html':
         specifier: ~0.52.0
-        version: 0.52.0(typescript@5.6.3)
+        version: 0.52.0(typescript@5.8.3)
       '@lexical/link':
         specifier: ~0.52.0
-        version: 0.52.0(typescript@5.6.3)
+        version: 0.52.0(typescript@5.8.3)
       '@lexical/list':
         specifier: ~0.52.0
-        version: 0.52.0(typescript@5.6.3)
+        version: 0.52.0(typescript@5.8.3)
       '@lexical/mark':
         specifier: ~0.52.0
-        version: 0.52.0(typescript@5.6.3)
+        version: 0.52.0(typescript@5.8.3)
       '@lexical/markdown':
         specifier: ~0.52.0
-        version: 0.52.0(typescript@5.6.3)
+        version: 0.52.0(typescript@5.8.3)
       '@lexical/overflow':
         specifier: ~0.52.0
-        version: 0.52.0(typescript@5.6.3)
+        version: 0.52.0(typescript@5.8.3)
       '@lexical/plain-text':
         specifier: ~0.52.0
-        version: 0.52.0(typescript@5.6.3)
+        version: 0.52.0(typescript@5.8.3)
       '@lexical/rich-text':
         specifier: ~0.52.0
-        version: 0.52.0(typescript@5.6.3)
+        version: 0.52.0(typescript@5.8.3)
       '@lexical/selection':
         specifier: ~0.52.0
-        version: 0.52.0(typescript@5.6.3)
+        version: 0.52.0(typescript@5.8.3)
       '@lexical/table':
         specifier: ~0.52.0
-        version: 0.52.0(typescript@5.6.3)
+        version: 0.52.0(typescript@5.8.3)
       '@lexical/text':
         specifier: ~0.52.0
-        version: 0.52.0(typescript@5.6.3)
+        version: 0.52.0(typescript@5.8.3)
       '@lexical/utils':
         specifier: ~0.52.0
-        version: 0.52.0(typescript@5.6.3)
+        version: 0.52.0(typescript@5.8.3)
       '@lexical/yjs':
         specifier: ~0.52.0
-        version: 0.52.0(typescript@5.6.3)(yjs@13.6.20)
+        version: 0.52.0(typescript@5.8.3)(yjs@13.6.20)
       lexical:
         specifier: ~0.52.0
-        version: 0.52.0(typescript@5.6.3)
+        version: 0.52.0(typescript@5.8.3)
     devDependencies:
       '@babel/core':
         specifier: ^7.25.8
@@ -193,8 +193,8 @@ importers:
         specifier: ^1.9.2
         version: 1.9.2
       typescript:
-        specifier: ^5.6.3
-        version: 5.6.3
+        specifier: ^5.8.2
+        version: 5.8.3
       yjs:
         specifier: ^13.6.20
         version: 13.6.20
@@ -3638,11 +3638,6 @@ packages:
     resolution: {integrity: sha512-/OxDN6OtAk5KBpGb28T+HZc2M+ADtvRxXrKKbUwtsLgdoxgX13hyy7ek6bFRl5+aBs2yZzB0c4CnQfAtVypW/g==}
     engines: {node: '>= 0.4'}
 
-  typescript@5.6.3:
-    resolution: {integrity: sha512-hjcS1mhfuyi4WW8IWtjP7brDrG2cuDZukyrYrSauoXGNgx0S7zceP07adYkJycEr56BOUTNPzbInooiN3fn1qw==}
-    engines: {node: '>=14.17'}
-    hasBin: true
-
   typescript@5.8.3:
     resolution: {integrity: sha512-p1diW6TqL9L07nNxvRMM7hMMw4c5XOo/1ibL4aAIGmSAt9slTE1Xgw5KWuof2uTOvCg9BY7ZRi+GaF+7sfgPeQ==}
     engines: {node: '>=14.17'}
@@ -4671,14 +4666,6 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.0
 
-  '@lexical/a11y@0.52.0(typescript@5.6.3)':
-    dependencies:
-      '@lexical/extension': 0.52.0(typescript@5.6.3)
-      '@lexical/utils': 0.52.0(typescript@5.6.3)
-      lexical: 0.52.0(typescript@5.6.3)
-    optionalDependencies:
-      typescript: 5.6.3
-
   '@lexical/a11y@0.52.0(typescript@5.8.3)':
     dependencies:
       '@lexical/extension': 0.52.0(typescript@5.8.3)
@@ -4686,19 +4673,6 @@ snapshots:
       lexical: 0.52.0(typescript@5.8.3)
     optionalDependencies:
       typescript: 5.8.3
-
-  '@lexical/clipboard@0.52.0(typescript@5.6.3)':
-    dependencies:
-      '@lexical/extension': 0.52.0(typescript@5.6.3)
-      '@lexical/html': 0.52.0(typescript@5.6.3)
-      '@lexical/internal': 0.52.0(typescript@5.6.3)
-      '@lexical/list': 0.52.0(typescript@5.6.3)
-      '@lexical/selection': 0.52.0(typescript@5.6.3)
-      '@lexical/utils': 0.52.0(typescript@5.6.3)
-      '@types/trusted-types': 2.0.7
-      lexical: 0.52.0(typescript@5.6.3)
-    optionalDependencies:
-      typescript: 5.6.3
 
   '@lexical/clipboard@0.52.0(typescript@5.8.3)':
     dependencies:
@@ -4712,16 +4686,6 @@ snapshots:
       lexical: 0.52.0(typescript@5.8.3)
     optionalDependencies:
       typescript: 5.8.3
-
-  '@lexical/code-core@0.52.0(typescript@5.6.3)':
-    dependencies:
-      '@lexical/extension': 0.52.0(typescript@5.6.3)
-      '@lexical/html': 0.52.0(typescript@5.6.3)
-      '@lexical/internal': 0.52.0(typescript@5.6.3)
-      '@lexical/utils': 0.52.0(typescript@5.6.3)
-      lexical: 0.52.0(typescript@5.6.3)
-    optionalDependencies:
-      typescript: 5.6.3
 
   '@lexical/code-core@0.52.0(typescript@5.8.3)':
     dependencies:
@@ -4742,14 +4706,6 @@ snapshots:
     optionalDependencies:
       typescript: 5.8.3
 
-  '@lexical/code@0.52.0(typescript@5.6.3)':
-    dependencies:
-      '@lexical/code-core': 0.52.0(typescript@5.6.3)
-      '@lexical/extension': 0.52.0(typescript@5.6.3)
-      lexical: 0.52.0(typescript@5.6.3)
-    optionalDependencies:
-      typescript: 5.6.3
-
   '@lexical/code@0.52.0(typescript@5.8.3)':
     dependencies:
       '@lexical/code-core': 0.52.0(typescript@5.8.3)
@@ -4758,28 +4714,12 @@ snapshots:
     optionalDependencies:
       typescript: 5.8.3
 
-  '@lexical/dragon@0.52.0(typescript@5.6.3)':
-    dependencies:
-      '@lexical/extension': 0.52.0(typescript@5.6.3)
-      lexical: 0.52.0(typescript@5.6.3)
-    optionalDependencies:
-      typescript: 5.6.3
-
   '@lexical/dragon@0.52.0(typescript@5.8.3)':
     dependencies:
       '@lexical/extension': 0.52.0(typescript@5.8.3)
       lexical: 0.52.0(typescript@5.8.3)
     optionalDependencies:
       typescript: 5.8.3
-
-  '@lexical/extension@0.52.0(typescript@5.6.3)':
-    dependencies:
-      '@lexical/internal': 0.52.0(typescript@5.6.3)
-      '@lexical/utils': 0.52.0(typescript@5.6.3)
-      '@preact/signals-core': 1.14.4
-      lexical: 0.52.0(typescript@5.6.3)
-    optionalDependencies:
-      typescript: 5.6.3
 
   '@lexical/extension@0.52.0(typescript@5.8.3)':
     dependencies:
@@ -4790,14 +4730,6 @@ snapshots:
     optionalDependencies:
       typescript: 5.8.3
 
-  '@lexical/hashtag@0.52.0(typescript@5.6.3)':
-    dependencies:
-      '@lexical/text': 0.52.0(typescript@5.6.3)
-      '@lexical/utils': 0.52.0(typescript@5.6.3)
-      lexical: 0.52.0(typescript@5.6.3)
-    optionalDependencies:
-      typescript: 5.6.3
-
   '@lexical/hashtag@0.52.0(typescript@5.8.3)':
     dependencies:
       '@lexical/text': 0.52.0(typescript@5.8.3)
@@ -4806,14 +4738,6 @@ snapshots:
     optionalDependencies:
       typescript: 5.8.3
 
-  '@lexical/history@0.52.0(typescript@5.6.3)':
-    dependencies:
-      '@lexical/extension': 0.52.0(typescript@5.6.3)
-      '@lexical/utils': 0.52.0(typescript@5.6.3)
-      lexical: 0.52.0(typescript@5.6.3)
-    optionalDependencies:
-      typescript: 5.6.3
-
   '@lexical/history@0.52.0(typescript@5.8.3)':
     dependencies:
       '@lexical/extension': 0.52.0(typescript@5.8.3)
@@ -4821,16 +4745,6 @@ snapshots:
       lexical: 0.52.0(typescript@5.8.3)
     optionalDependencies:
       typescript: 5.8.3
-
-  '@lexical/html@0.52.0(typescript@5.6.3)':
-    dependencies:
-      '@lexical/extension': 0.52.0(typescript@5.6.3)
-      '@lexical/internal': 0.52.0(typescript@5.6.3)
-      '@lexical/selection': 0.52.0(typescript@5.6.3)
-      '@lexical/utils': 0.52.0(typescript@5.6.3)
-      lexical: 0.52.0(typescript@5.6.3)
-    optionalDependencies:
-      typescript: 5.6.3
 
   '@lexical/html@0.52.0(typescript@5.8.3)':
     dependencies:
@@ -4842,24 +4756,9 @@ snapshots:
     optionalDependencies:
       typescript: 5.8.3
 
-  '@lexical/internal@0.52.0(typescript@5.6.3)':
-    optionalDependencies:
-      typescript: 5.6.3
-
   '@lexical/internal@0.52.0(typescript@5.8.3)':
     optionalDependencies:
       typescript: 5.8.3
-
-  '@lexical/link@0.52.0(typescript@5.6.3)':
-    dependencies:
-      '@lexical/a11y': 0.52.0(typescript@5.6.3)
-      '@lexical/extension': 0.52.0(typescript@5.6.3)
-      '@lexical/html': 0.52.0(typescript@5.6.3)
-      '@lexical/internal': 0.52.0(typescript@5.6.3)
-      '@lexical/utils': 0.52.0(typescript@5.6.3)
-      lexical: 0.52.0(typescript@5.6.3)
-    optionalDependencies:
-      typescript: 5.6.3
 
   '@lexical/link@0.52.0(typescript@5.8.3)':
     dependencies:
@@ -4872,16 +4771,6 @@ snapshots:
     optionalDependencies:
       typescript: 5.8.3
 
-  '@lexical/list@0.52.0(typescript@5.6.3)':
-    dependencies:
-      '@lexical/extension': 0.52.0(typescript@5.6.3)
-      '@lexical/html': 0.52.0(typescript@5.6.3)
-      '@lexical/internal': 0.52.0(typescript@5.6.3)
-      '@lexical/utils': 0.52.0(typescript@5.6.3)
-      lexical: 0.52.0(typescript@5.6.3)
-    optionalDependencies:
-      typescript: 5.6.3
-
   '@lexical/list@0.52.0(typescript@5.8.3)':
     dependencies:
       '@lexical/extension': 0.52.0(typescript@5.8.3)
@@ -4892,33 +4781,12 @@ snapshots:
     optionalDependencies:
       typescript: 5.8.3
 
-  '@lexical/mark@0.52.0(typescript@5.6.3)':
-    dependencies:
-      '@lexical/utils': 0.52.0(typescript@5.6.3)
-      lexical: 0.52.0(typescript@5.6.3)
-    optionalDependencies:
-      typescript: 5.6.3
-
   '@lexical/mark@0.52.0(typescript@5.8.3)':
     dependencies:
       '@lexical/utils': 0.52.0(typescript@5.8.3)
       lexical: 0.52.0(typescript@5.8.3)
     optionalDependencies:
       typescript: 5.8.3
-
-  '@lexical/markdown@0.52.0(typescript@5.6.3)':
-    dependencies:
-      '@lexical/code-core': 0.52.0(typescript@5.6.3)
-      '@lexical/internal': 0.52.0(typescript@5.6.3)
-      '@lexical/link': 0.52.0(typescript@5.6.3)
-      '@lexical/list': 0.52.0(typescript@5.6.3)
-      '@lexical/rich-text': 0.52.0(typescript@5.6.3)
-      '@lexical/selection': 0.52.0(typescript@5.6.3)
-      '@lexical/text': 0.52.0(typescript@5.6.3)
-      '@lexical/utils': 0.52.0(typescript@5.6.3)
-      lexical: 0.52.0(typescript@5.6.3)
-    optionalDependencies:
-      typescript: 5.6.3
 
   '@lexical/markdown@0.52.0(typescript@5.8.3)':
     dependencies:
@@ -4934,28 +4802,11 @@ snapshots:
     optionalDependencies:
       typescript: 5.8.3
 
-  '@lexical/overflow@0.52.0(typescript@5.6.3)':
-    dependencies:
-      lexical: 0.52.0(typescript@5.6.3)
-    optionalDependencies:
-      typescript: 5.6.3
-
   '@lexical/overflow@0.52.0(typescript@5.8.3)':
     dependencies:
       lexical: 0.52.0(typescript@5.8.3)
     optionalDependencies:
       typescript: 5.8.3
-
-  '@lexical/plain-text@0.52.0(typescript@5.6.3)':
-    dependencies:
-      '@lexical/clipboard': 0.52.0(typescript@5.6.3)
-      '@lexical/dragon': 0.52.0(typescript@5.6.3)
-      '@lexical/extension': 0.52.0(typescript@5.6.3)
-      '@lexical/selection': 0.52.0(typescript@5.6.3)
-      '@lexical/utils': 0.52.0(typescript@5.6.3)
-      lexical: 0.52.0(typescript@5.6.3)
-    optionalDependencies:
-      typescript: 5.6.3
 
   '@lexical/plain-text@0.52.0(typescript@5.8.3)':
     dependencies:
@@ -4967,19 +4818,6 @@ snapshots:
       lexical: 0.52.0(typescript@5.8.3)
     optionalDependencies:
       typescript: 5.8.3
-
-  '@lexical/rich-text@0.52.0(typescript@5.6.3)':
-    dependencies:
-      '@lexical/a11y': 0.52.0(typescript@5.6.3)
-      '@lexical/clipboard': 0.52.0(typescript@5.6.3)
-      '@lexical/dragon': 0.52.0(typescript@5.6.3)
-      '@lexical/extension': 0.52.0(typescript@5.6.3)
-      '@lexical/html': 0.52.0(typescript@5.6.3)
-      '@lexical/selection': 0.52.0(typescript@5.6.3)
-      '@lexical/utils': 0.52.0(typescript@5.6.3)
-      lexical: 0.52.0(typescript@5.6.3)
-    optionalDependencies:
-      typescript: 5.6.3
 
   '@lexical/rich-text@0.52.0(typescript@5.8.3)':
     dependencies:
@@ -4994,30 +4832,12 @@ snapshots:
     optionalDependencies:
       typescript: 5.8.3
 
-  '@lexical/selection@0.52.0(typescript@5.6.3)':
-    dependencies:
-      '@lexical/internal': 0.52.0(typescript@5.6.3)
-      lexical: 0.52.0(typescript@5.6.3)
-    optionalDependencies:
-      typescript: 5.6.3
-
   '@lexical/selection@0.52.0(typescript@5.8.3)':
     dependencies:
       '@lexical/internal': 0.52.0(typescript@5.8.3)
       lexical: 0.52.0(typescript@5.8.3)
     optionalDependencies:
       typescript: 5.8.3
-
-  '@lexical/table@0.52.0(typescript@5.6.3)':
-    dependencies:
-      '@lexical/clipboard': 0.52.0(typescript@5.6.3)
-      '@lexical/extension': 0.52.0(typescript@5.6.3)
-      '@lexical/html': 0.52.0(typescript@5.6.3)
-      '@lexical/internal': 0.52.0(typescript@5.6.3)
-      '@lexical/utils': 0.52.0(typescript@5.6.3)
-      lexical: 0.52.0(typescript@5.6.3)
-    optionalDependencies:
-      typescript: 5.6.3
 
   '@lexical/table@0.52.0(typescript@5.8.3)':
     dependencies:
@@ -5030,27 +4850,12 @@ snapshots:
     optionalDependencies:
       typescript: 5.8.3
 
-  '@lexical/text@0.52.0(typescript@5.6.3)':
-    dependencies:
-      '@lexical/internal': 0.52.0(typescript@5.6.3)
-      lexical: 0.52.0(typescript@5.6.3)
-    optionalDependencies:
-      typescript: 5.6.3
-
   '@lexical/text@0.52.0(typescript@5.8.3)':
     dependencies:
       '@lexical/internal': 0.52.0(typescript@5.8.3)
       lexical: 0.52.0(typescript@5.8.3)
     optionalDependencies:
       typescript: 5.8.3
-
-  '@lexical/utils@0.52.0(typescript@5.6.3)':
-    dependencies:
-      '@lexical/internal': 0.52.0(typescript@5.6.3)
-      '@lexical/selection': 0.52.0(typescript@5.6.3)
-      lexical: 0.52.0(typescript@5.6.3)
-    optionalDependencies:
-      typescript: 5.6.3
 
   '@lexical/utils@0.52.0(typescript@5.8.3)':
     dependencies:
@@ -5059,15 +4864,6 @@ snapshots:
       lexical: 0.52.0(typescript@5.8.3)
     optionalDependencies:
       typescript: 5.8.3
-
-  '@lexical/yjs@0.52.0(typescript@5.6.3)(yjs@13.6.20)':
-    dependencies:
-      '@lexical/internal': 0.52.0(typescript@5.6.3)
-      '@lexical/selection': 0.52.0(typescript@5.6.3)
-      lexical: 0.52.0(typescript@5.6.3)
-      yjs: 13.6.20
-    optionalDependencies:
-      typescript: 5.6.3
 
   '@lexical/yjs@0.52.0(typescript@5.8.3)(yjs@13.6.20)':
     dependencies:
@@ -6878,12 +6674,6 @@ snapshots:
     dependencies:
       readable-stream: 2.3.8
 
-  lexical@0.52.0(typescript@5.6.3):
-    dependencies:
-      '@lexical/internal': 0.52.0(typescript@5.6.3)
-    optionalDependencies:
-      typescript: 5.6.3
-
   lexical@0.52.0(typescript@5.8.3):
     dependencies:
       '@lexical/internal': 0.52.0(typescript@5.8.3)
@@ -7925,8 +7715,6 @@ snapshots:
       has-proto: 1.0.3
       is-typed-array: 1.1.13
       possible-typed-array-names: 1.0.0
-
-  typescript@5.6.3: {}
 
   typescript@5.8.3: {}
 
