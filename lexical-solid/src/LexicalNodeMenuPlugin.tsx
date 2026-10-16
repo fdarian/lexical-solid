@@ -12,7 +12,7 @@ import {
   type JSX,
   createSignal,
   createEffect,
-  startTransition,
+  onCleanup,
   Show,
 } from "solid-js";
 
@@ -72,11 +72,9 @@ export function LexicalNodeMenuPlugin<TOption extends MenuOption>(
         const domElement = editor.getElementByKey(props.nodeKey!);
         if (node != null && domElement != null) {
           if (resolution() === null) {
-            startTransition(() =>
-              openNodeMenu({
-                getRect: () => domElement.getBoundingClientRect(),
-              })
-            );
+            openNodeMenu({
+              getRect: () => domElement.getBoundingClientRect(),
+            });
           }
         }
       });
@@ -89,11 +87,13 @@ export function LexicalNodeMenuPlugin<TOption extends MenuOption>(
 
   createEffect(() => {
     if (props.nodeKey != null) {
-      return editor.registerUpdateListener(({ dirtyElements }) => {
-        if (dirtyElements.get(props.nodeKey!)) {
-          positionOrCloseMenu();
-        }
-      });
+      onCleanup(
+        editor.registerUpdateListener(({ dirtyElements }) => {
+          if (dirtyElements.get(props.nodeKey!)) {
+            positionOrCloseMenu();
+          }
+        })
+      );
     }
   });
 

@@ -27,6 +27,7 @@ import {
   Accessor,
   createEffect,
   createMemo,
+  createRenderEffect,
   createSignal,
   For,
   JSX,
@@ -379,7 +380,10 @@ export function LexicalMenu<TOption extends MenuOption>(props: {
     });
   });
 
-  createEffect(() => {
+  // A render effect so it runs before the preselect effect above, as upstream's
+  // useLayoutEffect does: otherwise that effect highlights index 0 first and
+  // this one never sets aria-activedescendant.
+  createRenderEffect(() => {
     if (props.options === null) {
       setHighlightedIndex(null);
     } else if (selectedIndex() === null && preselectFirstItem()) {
@@ -591,17 +595,23 @@ export function LexicalMenu<TOption extends MenuOption>(props: {
     setHighlightedIndex,
   };
 
-  return untrack(() => {
+  // `matchingString` is a plain string argument, so a custom renderer can only
+  // see a new query by being called again. Only the renderer and the query are
+  // tracked: whatever else the renderer reads stays in its own computations,
+  // otherwise every option change would rebuild the whole menu. The default
+  // renderer reads `props` reactively and must not be rebuilt per keystroke.
+  const menu = createMemo(() => {
     const menuRenderFn = props.menuRenderFn;
-    if (menuRenderFn != null) {
-      return menuRenderFn(
-        props.anchorElementRef,
-        listItemProps,
-        matchingString()
-      );
+    if (menuRenderFn == null) {
+      return untrack(defaultMenuRenderFn);
     }
-    return defaultMenuRenderFn();
+    const query = matchingString();
+    return untrack(() =>
+      menuRenderFn(props.anchorElementRef, listItemProps, query)
+    );
   });
+
+  return <>{menu()}</>;
 }
 
 function setContainerDivAttributes(
