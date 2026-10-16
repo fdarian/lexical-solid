@@ -16,7 +16,7 @@ export * from "./LexicalDecoratorBlockNode";
 export * from "./LexicalDraggableBlockPlugin";
 export * from "./LexicalEditorRefPlugin";
 export * from "./LexicalErrorBoundary";
-export * from "./LexicalHashTagPlugin";
+export * from "./LexicalHashtagPlugin";
 export * from "./LexicalHistoryPlugin";
 export * from "./LexicalHorizontalRuleNode";
 export * from "./LexicalHorizontalRulePlugin";
