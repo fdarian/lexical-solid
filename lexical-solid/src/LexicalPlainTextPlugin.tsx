@@ -19,13 +19,16 @@ export function PlainTextPlugin(params: {
       errorBoundary?: ErrorBoundaryType;
     }
   | {
+      ErrorBoundary?: undefined;
       /** @deprecated Use ErrorBoundary */
       errorBoundary: ErrorBoundaryType;
-      ErrorBoundary?: ErrorBoundaryType;
     }
 )): JSX.Element {
   const [editor] = useLexicalComposerContext();
-  const decorators = useDecorators(editor, params.ErrorBoundary ?? params.errorBoundary!);
+  const decorators = useDecorators(
+    editor,
+    params.ErrorBoundary !== undefined ? params.ErrorBoundary : params.errorBoundary
+  );
   usePlainTextSetup(editor);
 
   return (
