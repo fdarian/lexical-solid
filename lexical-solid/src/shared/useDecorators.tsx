@@ -14,7 +14,7 @@ import { Dynamic, Portal } from "solid-js/web";
 
 type ErrorBoundaryProps = {
   children: JSX.Element;
-  onError: (err: any, reset: () => void) => JSX.Element;
+  onError: (error: Error) => void;
 };
 export type ErrorBoundaryType = Component<ErrorBoundaryProps>;
 
@@ -63,7 +63,7 @@ export function useDecorators(
       const nodeKey = decoratorKeys[i];
       const decorator = (
         <ErrorBoundary
-          onError={(error, reset) => editor._onError(error) as undefined}
+          onError={(error) => editor._onError(error)}
         >
           <Suspense fallback={null}>
             <Dynamic component={decorators()[nodeKey]} />
