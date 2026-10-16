@@ -27,6 +27,7 @@ import {
   Accessor,
   createEffect,
   createMemo,
+  createRenderEffect,
   createSignal,
   For,
   JSX,
@@ -379,7 +380,10 @@ export function LexicalMenu<TOption extends MenuOption>(props: {
     });
   });
 
-  createEffect(() => {
+  // A render effect so it runs before the preselect effect above, as upstream's
+  // useLayoutEffect does: otherwise that effect highlights index 0 first and
+  // this one never sets aria-activedescendant.
+  createRenderEffect(() => {
     if (props.options === null) {
       setHighlightedIndex(null);
     } else if (selectedIndex() === null && preselectFirstItem()) {
