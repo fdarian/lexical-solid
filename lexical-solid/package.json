@@ -10,18 +10,18 @@
     ".": {
       "solid": "./dist/source/index.jsx",
       "types": "./dist/types/index.d.ts",
-      "import": "./dist/esm/index.js",
       "browser": "./dist/esm/index.js",
-      "require": "./dist/cjs/index.cjs",
-      "node": "./dist/cjs/index.cjs"
+      "node": "./dist/cjs/index.cjs",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.cjs"
     },
     "./*": {
       "solid": "./dist/source/*.jsx",
       "types": "./dist/types/*.d.ts",
-      "import": "./dist/esm/*.js",
       "browser": "./dist/esm/*.js",
-      "require": "./dist/cjs/*.cjs",
-      "node": "./dist/cjs/*.cjs"
+      "node": "./dist/cjs/*.cjs",
+      "import": "./dist/esm/*.js",
+      "require": "./dist/cjs/*.cjs"
     }
   },
   "typesVersions": {
