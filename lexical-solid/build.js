@@ -130,7 +130,14 @@ async function buildJs({ generate, format, dir, entryExtension }) {
 await buildJs({ generate: 'dom', format: 'esm', dir: 'dist/esm', entryExtension: '.js' });
 await buildJs({ generate: 'ssr', format: 'cjs', dir: 'dist/cjs', entryExtension: '.cjs' });
 
-const emitResult = program.emit(undefined, undefined, undefined, false, {
+// The `solid` export condition maps to dist/source/*.jsx, but tsc emits plain .ts sources as .js
+const sourceDir = resolve('dist/source') + '/';
+function writeSourceFile(fileName, text, writeByteOrderMark) {
+  const target = fileName.startsWith(sourceDir) && fileName.endsWith('.js') ? fileName.slice(0, -3) + '.jsx' : fileName;
+  ts.sys.writeFile(target, text, writeByteOrderMark);
+}
+
+const emitResult = program.emit(undefined, writeSourceFile, undefined, false, {
   afterDeclarations: [declarationExtensionTransformer],
 });
 if (emitResult.emitSkipped) {
