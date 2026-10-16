@@ -17,13 +17,12 @@ export type SerializedDecoratorBlockNode = Spread<
   SerializedLexicalNode
 >;
 
-export class DecoratorBlockNode extends DecoratorNode<JSX.Element> {
+export class DecoratorBlockNode extends DecoratorNode<() => JSX.Element> {
   __format: ElementFormatType;
 
   constructor(format?: ElementFormatType, key?: NodeKey) {
     super(key);
-    //@ts-ignore
-    this.__format = format;
+    this.__format = format || "";
   }
 
   exportJSON(): SerializedDecoratorBlockNode {
@@ -68,7 +67,7 @@ export class DecoratorBlockNode extends DecoratorNode<JSX.Element> {
   }
 }
 export function $isDecoratorBlockNode(
-  node?: LexicalNode
+  node: LexicalNode | null | undefined
 ): node is DecoratorBlockNode {
   return node instanceof DecoratorBlockNode;
 }
