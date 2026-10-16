@@ -50,7 +50,7 @@ function defaultTransformers(): Transformer[] {
 
 /**
  * The default set of Markdown {@link Transformer}s used by
- * {@link LexicalMarkdownShortcutPlugin}: the core `@lexical/markdown`
+ * {@link MarkdownShortcutPlugin}: the core `@lexical/markdown`
  * `TRANSFORMERS` plus a transformer that turns `---`, `***`, or `___` into a
  * horizontal rule.
  */
@@ -62,7 +62,7 @@ export const DEFAULT_TRANSFORMERS: Transformer[] = defaultTransformers();
  * the corresponding nodes as you type. Pass `transformers` to customize which
  * shortcuts are active; it defaults to {@link DEFAULT_TRANSFORMERS}.
  */
-export function LexicalMarkdownShortcutPlugin(
+export function MarkdownShortcutPlugin(
   props: Readonly<{ transformers?: Transformer[] }>
 ): null {
   props = mergeProps({ transformers: DEFAULT_TRANSFORMERS }, props);
@@ -73,3 +73,6 @@ export function LexicalMarkdownShortcutPlugin(
   });
   return null;
 }
+
+/** @deprecated Use MarkdownShortcutPlugin */
+export const LexicalMarkdownShortcutPlugin = MarkdownShortcutPlugin;
