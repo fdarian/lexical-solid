@@ -7,9 +7,12 @@ import {
   $createParagraphNode,
   $getRoot,
   $getSelection,
+  CAN_USE_DOM,
   createEditor,
   EditorState,
   EditorThemeClasses,
+  getActiveElement,
+  HISTORY_MERGE_TAG,
   Klass,
   LexicalEditor,
   LexicalNode,
@@ -18,7 +21,7 @@ import {
 } from "lexical";
 import { JSX, ParentProps, onMount } from "solid-js";
 
-const HISTORY_MERGE_OPTIONS = { tag: "history-merge" };
+const HISTORY_MERGE_OPTIONS = { tag: HISTORY_MERGE_TAG };
 
 export type InitialEditorStateType =
   | null
@@ -30,6 +33,14 @@ export type InitialConfigType = Readonly<{
   namespace: string;
   nodes?: ReadonlyArray<Klass<LexicalNode> | LexicalNodeReplacement>;
   onError: (error: Error, editor: LexicalEditor) => void;
+  /**
+   * Optional handler for recoverable, warn-level conditions (e.g. the
+   * update-recursion guard tripping) that the editor has already recovered
+   * from. Mirrors `onError` but at warn severity. Defaults (in core
+   * `createEditor`) to a handler that throws in development and only
+   * `console.warn`s in production.
+   */
+  onWarn?: (error: Error, editor: LexicalEditor) => void;
   editable?: boolean;
   theme?: EditorThemeClasses;
   editorState?: InitialEditorStateType;
@@ -41,30 +52,25 @@ type Props = ParentProps<{
 }>;
 
 export function LexicalComposer(props: Props): JSX.Element {
-  const {
-    editable,
-    theme,
-    namespace,
-    nodes,
-    onError,
-    editorState: initialEditorState,
-    html,
-  } = props.initialConfig;
+  const config = props.initialConfig;
+  const onError = config.onError;
+  const onWarn = config.onWarn;
 
   const context: LexicalComposerContextType = createLexicalComposerContext(
     null,
-    theme
+    config.theme
   );
 
   const editor = createEditor({
-    editable,
-    html,
-    namespace,
-    nodes,
+    editable: config.editable,
+    html: config.html,
+    namespace: config.namespace,
+    nodes: config.nodes,
     onError: (error) => onError(error, editor),
-    theme,
+    ...(onWarn ? { onWarn: (error) => onWarn(error, editor) } : {}),
+    theme: config.theme,
   });
-  initializeEditor(editor, initialEditorState);
+  initializeEditor(editor, config.editorState);
 
   onMount(() => {
     const isEditable = props.initialConfig.editable;
@@ -90,11 +96,16 @@ function initializeEditor(
       if (root.isEmpty()) {
         const paragraph = $createParagraphNode();
         root.append(paragraph);
+        const rootElement = editor.getRootElement();
+        // getActiveElement rather than document.activeElement, which reports
+        // the shadow host when the editor is in a shadow root.
         const activeElement =
-          typeof window !== "undefined" ? document.activeElement : null;
+          CAN_USE_DOM && rootElement !== null
+            ? getActiveElement(rootElement)
+            : null;
         if (
           $getSelection() !== null ||
-          (activeElement !== null && activeElement === editor.getRootElement())
+          (activeElement !== null && activeElement === rootElement)
         ) {
           paragraph.select();
         }

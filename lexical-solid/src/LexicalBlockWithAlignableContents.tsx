@@ -8,14 +8,13 @@ import {
   CLICK_COMMAND,
   COMMAND_PRIORITY_LOW,
   FORMAT_ELEMENT_COMMAND,
+  getComposedEventTarget,
+  mergeRegister,
 } from "lexical";
 import { useLexicalComposerContext } from "./LexicalComposerContext";
 import { $isDecoratorBlockNode } from "./LexicalDecoratorBlockNode";
 import { useLexicalNodeSelection } from "./useLexicalNodeSelection";
-import {
-  $getNearestBlockElementAncestorOrThrow,
-  mergeRegister,
-} from "@lexical/utils";
+import { $getNearestBlockElementAncestorOrThrow } from "@lexical/utils";
 import { JSX } from "solid-js/jsx-runtime";
 import { createEffect, onCleanup } from "solid-js";
 
@@ -76,7 +75,7 @@ export function BlockWithAlignableContents(props: Props): JSX.Element {
         editor.registerCommand<MouseEvent>(
           CLICK_COMMAND,
           (event) => {
-            if (event.target === ref) {
+            if (getComposedEventTarget(event) === ref) {
               event.preventDefault();
               if (!event.shiftKey) {
                 clearSelection();

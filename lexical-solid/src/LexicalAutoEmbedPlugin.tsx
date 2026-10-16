@@ -1,30 +1,35 @@
 import {
   LexicalNode,
-  MutationListener,
   $getNodeByKey,
   $getSelection,
+  $onUpdate,
+  COMMAND_PRIORITY_BEFORE_EDITOR,
   COMMAND_PRIORITY_EDITOR,
   COMMAND_PRIORITY_LOW,
   createCommand,
   LexicalCommand,
   LexicalEditor,
+  mergeRegister,
+  MutationListener,
   NodeKey,
+  PASTE_COMMAND,
+  PASTE_TAG,
   TextNode,
   CommandListenerPriority,
 } from "lexical";
 import { $isLinkNode, AutoLinkNode, LinkNode } from "@lexical/link";
+import { objectKlassEquals } from "@lexical/utils";
 import { useLexicalComposerContext } from "./LexicalComposerContext";
-import { MenuRenderFn } from "./LexicalTypeaheadMenuPlugin";
-import { mergeRegister } from "@lexical/utils";
+import { MenuOption, MenuRenderFn } from "./shared/LexicalMenu";
 import {
   createEffect,
   createMemo,
   createSignal,
   JSX,
-  Show,
   onCleanup,
+  Show,
 } from "solid-js";
-import { LexicalNodeMenuPlugin, MenuOption } from "./LexicalNodeMenuPlugin";
+import { LexicalNodeMenuPlugin } from "./LexicalNodeMenuPlugin";
 
 export type EmbedMatchResult<TEmbedMatchResult = unknown> = {
   url: string;
@@ -68,33 +73,72 @@ export class AutoEmbedOption extends MenuOption {
 }
 
 type LexicalAutoEmbedPluginProps<TEmbedConfig extends EmbedConfig> = {
+  /** An array of configurations used to insert Embed elements */
   embedConfigs: Array<TEmbedConfig>;
-  onOpenEmbedModalForConfig: (embedConfig: TEmbedConfig) => void;
+  /**
+   * Callback for handling the {@link INSERT_EMBED_COMMAND} command.
+   * If no function is passed, the command is not registered
+   */
+  onOpenEmbedModalForConfig?: (embedConfig: TEmbedConfig) => void;
+  /**
+   * A function that links a specific configuration to a set of options.
+   * Each option can be handled by click or by pressing the Enter or Tab key
+   * when the cursor hovers over it.
+   * Pass the necessary callbacks to {@link AutoEmbedOption.onSelect}
+   */
   getMenuOptions: (
     activeEmbedConfig: TEmbedConfig,
     embedFn: () => void,
     dismissFn: () => void
   ) => Array<AutoEmbedOption>;
-  menuRenderFn: MenuRenderFn<AutoEmbedOption>;
+  /**
+   * A function for rendering button menu.
+   * By default, it displays a plain list with the option titles
+   */
+  menuRenderFn?: MenuRenderFn<AutoEmbedOption>;
+  /** Priority for key handling in the menu. The default is `COMMAND_PRIORITY_LOW` */
   menuCommandPriority?: CommandListenerPriority;
 };
 
+type EmbedMatch<TEmbedConfig extends EmbedConfig> = {
+  embedConfig: TEmbedConfig;
+  key: NodeKey;
+  result: Parameters<TEmbedConfig["insertNode"]>[1];
+  url: string;
+};
+
+function $getCurrentLink(key: NodeKey, url: string): LinkNode | null {
+  const linkNode = $getNodeByKey(key);
+  return $isLinkNode(linkNode) &&
+    linkNode.isAttached() &&
+    linkNode.getURL() === url
+    ? linkNode
+    : null;
+}
+
+/**
+ * Watches for pasted AutoLink nodes that match any of the provided embed
+ * configurations (e.g., YouTube, Twitter URLs). When a match is found, it shows
+ * a menu offering to replace the link with an embedded node.
+ */
 export function LexicalAutoEmbedPlugin<TEmbedConfig extends EmbedConfig>(
   props: LexicalAutoEmbedPluginProps<TEmbedConfig>
 ): JSX.Element | null {
   const [editor] = useLexicalComposerContext();
 
-  const [nodeKey, setNodeKey] = createSignal<NodeKey | null>(null);
-  const [activeEmbedConfig, setActiveEmbedConfig] =
-    createSignal<TEmbedConfig | null>(null);
+  const [embedMatch, setEmbedMatch] =
+    createSignal<EmbedMatch<TEmbedConfig> | null>(null);
+  // Only the most recent paste may open the menu, even when an older
+  // asynchronous parseUrl result resolves after a newer one.
+  let latestCheck = 0;
 
   const reset = () => {
-    setNodeKey(null);
-    setActiveEmbedConfig(null);
+    setEmbedMatch(null);
   };
 
   const checkIfLinkNodeIsEmbeddable = async (key: NodeKey) => {
-    const url = editor.getEditorState().read(() => {
+    const check = ++latestCheck;
+    const url = editor.read("latest", function () {
       const linkNode = $getNodeByKey(key);
       if ($isLinkNode(linkNode)) {
         return linkNode.getURL();
@@ -103,48 +147,73 @@ export function LexicalAutoEmbedPlugin<TEmbedConfig extends EmbedConfig>(
     if (url === undefined) {
       return;
     }
-    for (const embedConfig of props.embedConfigs) {
-      const urlMatch = await Promise.resolve(embedConfig.parseUrl(url));
-      if (urlMatch != null) {
-        setActiveEmbedConfig(() => embedConfig);
-        setNodeKey(key);
+    const embedConfigs = props.embedConfigs;
+    // When several configs match, the last one wins, so check them from
+    // the end and stop at the first match to call parseUrl no more often
+    // than needed.
+    for (let i = embedConfigs.length - 1; i >= 0; i--) {
+      const embedConfig = embedConfigs[i];
+      const result = await Promise.resolve(embedConfig.parseUrl(url));
+      if (check !== latestCheck) {
+        return;
+      }
+      if (result != null) {
+        // Edits made while parseUrl was pending may not be committed yet
+        if (editor.read("pending", () => $getCurrentLink(key, url) !== null)) {
+          setEmbedMatch({ embedConfig, key, result, url });
+        }
+        return;
       }
     }
   };
 
   createEffect(() => {
-    const listener: MutationListener = (
-      nodeMutations,
-      { updateTags, dirtyLeaves }
-    ) => {
+    let isSingleTokenPaste = false;
+    const listener: MutationListener = (nodeMutations, { updateTags }) => {
+      const activeMatch = embedMatch();
       for (const [key, mutation] of nodeMutations) {
         if (
           mutation === "created" &&
-          updateTags.has("paste") &&
-          dirtyLeaves.size <= 3
+          updateTags.has(PASTE_TAG) &&
+          isSingleTokenPaste
         ) {
           checkIfLinkNodeIsEmbeddable(key);
-        } else if (key === nodeKey()) {
+        } else if (activeMatch !== null && key === activeMatch.key) {
           reset();
         }
       }
     };
     onCleanup(
       mergeRegister(
-        ...[LinkNode, AutoLinkNode].map((Klass) =>
-          editor.registerMutationListener(
-            Klass,
-            (...args) => listener(...args),
-            {
-              skipInitialization: true,
+        editor.registerCommand(
+          PASTE_COMMAND,
+          (event) => {
+            isSingleTokenPaste =
+              objectKlassEquals(event, ClipboardEvent) &&
+              event.clipboardData !== null &&
+              /^\S+$/.test(event.clipboardData.getData("text/plain"));
+            if (isSingleTokenPaste) {
+              $onUpdate(() => {
+                isSingleTokenPaste = false;
+              });
             }
-          )
+            return false;
+          },
+          COMMAND_PRIORITY_BEFORE_EDITOR
+        ),
+        ...[LinkNode, AutoLinkNode].map((Klass) =>
+          editor.registerMutationListener(Klass, listener, {
+            skipInitialization: true,
+          })
         )
       )
     );
   });
 
   createEffect(() => {
+    const onOpenEmbedModalForConfig = props.onOpenEmbedModalForConfig;
+    if (!onOpenEmbedModalForConfig) return;
+
     onCleanup(
       editor.registerCommand(
         INSERT_EMBED_COMMAND,
@@ -153,7 +222,7 @@ export function LexicalAutoEmbedPlugin<TEmbedConfig extends EmbedConfig>(
             ({ type }) => type === embedConfigType
           );
           if (embedConfig) {
-            props.onOpenEmbedModalForConfig(embedConfig);
+            onOpenEmbedModalForConfig(embedConfig);
             return true;
           }
           return false;
@@ -163,39 +232,31 @@ export function LexicalAutoEmbedPlugin<TEmbedConfig extends EmbedConfig>(
     );
   });
 
-  const embedLinkViaActiveEmbedConfig = async () => {
-    if (activeEmbedConfig() != null && nodeKey() != null) {
-      const linkNode = editor.getEditorState().read(() => {
-        const node = $getNodeByKey(nodeKey()!);
-        if ($isLinkNode(node)) {
-          return node;
-        }
-        return null;
-      });
-
-      if ($isLinkNode(linkNode)) {
-        const result = await Promise.resolve(
-          activeEmbedConfig()!.parseUrl(linkNode.__url)
-        );
-        if (result != null) {
-          editor.update(() => {
-            if (!$getSelection()) {
-              linkNode.selectEnd();
-            }
-            activeEmbedConfig()!.insertNode(editor, result);
-            if (linkNode.isAttached()) {
-              linkNode.remove();
-            }
-          });
-        }
-      }
+  const embedLinkViaActiveEmbedConfig = () => {
+    const match = embedMatch();
+    if (match == null) {
+      return;
     }
+    editor.update(() => {
+      const linkNode = $getCurrentLink(match.key, match.url);
+      if (linkNode === null) {
+        return;
+      }
+      if (!$getSelection()) {
+        linkNode.selectEnd();
+      }
+      match.embedConfig.insertNode(editor, match.result);
+      if (linkNode.isAttached()) {
+        linkNode.remove();
+      }
+    });
   };
 
   const options = createMemo(() => {
-    return activeEmbedConfig() != null && nodeKey() != null
+    const match = embedMatch();
+    return match != null
       ? props.getMenuOptions(
-          activeEmbedConfig()!,
+          match.embedConfig,
           embedLinkViaActiveEmbedConfig,
           reset
         )
@@ -214,15 +275,17 @@ export function LexicalAutoEmbedPlugin<TEmbedConfig extends EmbedConfig>(
   };
 
   return (
-    <Show when={nodeKey() != null}>
-      <LexicalNodeMenuPlugin<AutoEmbedOption>
-        nodeKey={nodeKey()}
-        onClose={reset}
-        onSelectOption={onSelectOption}
-        options={options()}
-        menuRenderFn={props.menuRenderFn}
-        commandPriority={props.menuCommandPriority ?? COMMAND_PRIORITY_LOW}
-      />
+    <Show when={embedMatch()}>
+      {(match) => (
+        <LexicalNodeMenuPlugin<AutoEmbedOption>
+          nodeKey={match().key}
+          onClose={reset}
+          onSelectOption={onSelectOption}
+          options={options()}
+          menuRenderFn={props.menuRenderFn}
+          commandPriority={props.menuCommandPriority ?? COMMAND_PRIORITY_LOW}
+        />
+      )}
     </Show>
   );
 }

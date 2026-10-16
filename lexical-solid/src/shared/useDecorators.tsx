@@ -33,6 +33,17 @@ export function useDecorators(
     })
   );
 
+  // Decorator portals mount into elements that only exist once the editor has
+  // a root element, so the portals must be recomputed when it changes.
+  const [rootElement, setRootElement] = createSignal<HTMLElement | null>(
+    editor.getRootElement()
+  );
+  onCleanup(
+    editor.registerRootListener((nextRootElement) => {
+      setRootElement(nextRootElement);
+    })
+  );
+
   onMount(() => {
     // If the content editable mounts before the subscription is added, then
     // nothing will be rendered on initial pass. We can get around that by
@@ -42,6 +53,9 @@ export function useDecorators(
 
   // Return decorators defined as React Portals
   return createMemo(() => {
+    // Declare a dependency on the root element so the portals are recomputed
+    // when it changes.
+    rootElement();
     const decoratedPortals = [];
     const decoratorKeys = Object.keys(decorators());
 

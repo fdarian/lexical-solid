@@ -1,19 +1,29 @@
 import { useLexicalComposerContext } from "./LexicalComposerContext";
+import { useLexicalEditable } from "./useLexicalEditable";
 import { eventFiles } from "@lexical/rich-text";
-import {
-  calculateZoomLevel,
-  isHTMLElement,
-  mergeRegister,
-} from "@lexical/utils";
+import { calculateZoomLevel } from "@lexical/utils";
 import {
   $getNearestNodeFromDOMNode,
   $getNodeByKey,
   $getRoot,
+  $getSelection,
+  $onUpdate,
+  BLUR_COMMAND,
   COMMAND_PRIORITY_HIGH,
   COMMAND_PRIORITY_LOW,
   DRAGOVER_COMMAND,
   DROP_COMMAND,
+  getActiveElement,
+  getActiveElementDeep,
+  getComposedEventTarget,
+  getParentElement,
+  getRootOwnerDocument,
+  IS_FIREFOX,
+  isHTMLElement,
   LexicalEditor,
+  mergeRegister,
+  registerEventListener,
+  registerEventListeners,
 } from "lexical";
 import { Accessor, createEffect, createSignal, JSX, onCleanup } from "solid-js";
 import { Portal } from "solid-js/web";
@@ -44,20 +54,36 @@ function getCurrentIndex(keysLength: number): number {
 }
 
 function getTopLevelNodeKeys(editor: LexicalEditor): string[] {
-  return editor.getEditorState().read(() => $getRoot().getChildrenKeys());
+  return editor.read("latest", () => $getRoot().getChildrenKeys());
+}
+
+function restoreEditorFocus(
+  editor: LexicalEditor,
+  rootElement: HTMLElement
+): void {
+  rootElement.focus({ preventScroll: true });
+  editor.update(() => {
+    const selection = $getSelection();
+    if (selection !== null && !selection.dirty) {
+      selection.dirty = true;
+    }
+  });
 }
 
 function getCollapsedMargins(elem: HTMLElement): {
   marginTop: number;
   marginBottom: number;
 } {
+  const view = elem.ownerDocument.defaultView;
   const getMargin = (
     element: Element | null,
     margin: "marginTop" | "marginBottom"
   ): number =>
-    element ? parseFloat(window.getComputedStyle(element)[margin]) : 0;
+    element && view ? parseFloat(view.getComputedStyle(element)[margin]) : 0;
 
-  const { marginTop, marginBottom } = window.getComputedStyle(elem);
+  const style = view ? view.getComputedStyle(elem) : null;
+  const marginTop = style ? style.marginTop : "0";
+  const marginBottom = style ? style.marginBottom : "0";
   const prevElemSiblingMarginBottom = getMargin(
     elem.previousElementSibling,
     "marginBottom"
@@ -89,7 +115,7 @@ function getBlockElement(
 
   let blockElem: HTMLElement | null = null;
 
-  editor.getEditorState().read(() => {
+  editor.read("latest", () => {
     if (useEdgeAsDefault) {
       const [firstNode, lastNode] = [
         editor.getElementByKey(topLevelNodeKeys[0]),
@@ -168,33 +194,43 @@ function getBlockElement(
 function setMenuPosition(
   targetElem: HTMLElement | null,
   floatingElem: HTMLElement,
-  anchorElem: HTMLElement
+  anchorElem: HTMLElement,
+  zoomLevel: number
 ) {
   if (!targetElem) {
-    floatingElem.style.opacity = "0";
-    floatingElem.style.transform = "translate(-10000px, -10000px)";
+    floatingElem.style.display = "none";
     return;
   }
 
   const targetRect = targetElem.getBoundingClientRect();
-  const targetStyle = window.getComputedStyle(targetElem);
+  const targetView = targetElem.ownerDocument.defaultView;
+  const targetStyle = targetView
+    ? targetView.getComputedStyle(targetElem)
+    : null;
   const floatingElemRect = floatingElem.getBoundingClientRect();
   const anchorElementRect = anchorElem.getBoundingClientRect();
 
   // top left
-  let targetCalculateHeight: number = parseInt(targetStyle.lineHeight, 10);
+  let targetCalculateHeight: number = targetStyle
+    ? parseInt(targetStyle.lineHeight, 10)
+    : NaN;
   if (isNaN(targetCalculateHeight)) {
     // middle
     targetCalculateHeight = targetRect.bottom - targetRect.top;
   }
 
   const top =
-    targetRect.top +
-    (targetCalculateHeight - floatingElemRect.height) / 2 -
-    anchorElementRect.top;
+    (targetRect.top +
+      (targetCalculateHeight -
+        (floatingElemRect.height || targetCalculateHeight)) /
+        2 -
+      anchorElementRect.top +
+      anchorElem.scrollTop) /
+    zoomLevel;
 
   const left = SPACE;
 
+  floatingElem.style.display = "flex";
   floatingElem.style.opacity = "1";
   floatingElem.style.transform = `translate(${left}px, ${top}px)`;
 }
@@ -232,7 +268,8 @@ function setTargetLine(
     lineTop -= marginTop / 2;
   }
 
-  const top = lineTop - anchorTop - TARGET_LINE_HALF_HEIGHT;
+  const top =
+    lineTop - anchorTop - TARGET_LINE_HALF_HEIGHT + anchorElem.scrollTop;
   const left = TEXT_BOX_HORIZONTAL_PADDING - SPACE;
 
   targetLineElem.style.transform = `translate(${left}px, ${top}px)`;
@@ -254,13 +291,13 @@ function useDraggableBlockMenu(
   anchorElem: HTMLElement,
   menuRef: Accessor<HTMLElement | null>,
   targetLineRef: Accessor<HTMLElement | null>,
-  isEditable: boolean,
+  isEditable: Accessor<boolean>,
   menuComponent: JSX.Element,
   targetLineComponent: JSX.Element,
   isOnMenu: (element: HTMLElement) => boolean,
   onElementChanged?: (element: HTMLElement | null) => void
 ): JSX.Element {
-  const scrollerElem = anchorElem.parentElement;
+  const scrollerElem = getParentElement(anchorElem);
 
   const isDraggingBlockRef = { current: false };
   const [draggableBlockElem, setDraggableBlockElemState] =
@@ -275,13 +312,13 @@ function useDraggableBlockMenu(
 
   createEffect(() => {
     function onMouseMove(event: MouseEvent) {
-      const target = event.target;
-      if (!isHTMLElement(target) && !isHTMLElement(target)) {
+      const target = getComposedEventTarget(event);
+      if (!isHTMLElement(target)) {
         setDraggableBlockElem(null);
         return;
       }
 
-      if (isOnMenu(target as HTMLElement)) {
+      if (isOnMenu(target)) {
         return;
       }
 
@@ -295,22 +332,25 @@ function useDraggableBlockMenu(
     }
 
     if (scrollerElem != null) {
-      scrollerElem.addEventListener("mousemove", onMouseMove);
-      scrollerElem.addEventListener("mouseleave", onMouseLeave);
+      onCleanup(
+        registerEventListeners(scrollerElem, {
+          mouseleave: onMouseLeave,
+          mousemove: onMouseMove,
+        })
+      );
     }
-
-    return () => {
-      if (scrollerElem != null) {
-        scrollerElem.removeEventListener("mousemove", onMouseMove);
-        scrollerElem.removeEventListener("mouseleave", onMouseLeave);
-      }
-    };
-  }, [scrollerElem, anchorElem, editor, isOnMenu]);
+  });
 
   createEffect(() => {
+    const zoomLevel = calculateZoomLevel(editor.getRootElement(), true);
     const menuRefUnwrapped = menuRef();
     if (menuRefUnwrapped) {
-      setMenuPosition(draggableBlockElem(), menuRefUnwrapped, anchorElem);
+      setMenuPosition(
+        draggableBlockElem(),
+        menuRefUnwrapped,
+        anchorElem,
+        zoomLevel
+      );
     }
   });
 
@@ -323,8 +363,11 @@ function useDraggableBlockMenu(
       if (isFileTransfer) {
         return false;
       }
-      const { pageY, target } = event;
-      if (!isHTMLElement(target) && !isHTMLElement(target)) {
+      const pageY = event.pageY;
+      // Composed target so the zoom level is read from the real element rather
+      // than the shadow host when the editor is in a shadow tree.
+      const target = getComposedEventTarget(event);
+      if (!isHTMLElement(target)) {
         return false;
       }
       const targetBlockElem = getBlockElement(anchorElem, editor, event, true);
@@ -351,7 +394,11 @@ function useDraggableBlockMenu(
       if (isFileTransfer) {
         return false;
       }
-      const { target, dataTransfer, pageY } = event;
+      const dataTransfer = event.dataTransfer;
+      const pageY = event.pageY;
+      // Composed target so the zoom level is read from the real element rather
+      // than the shadow host when the editor is in a shadow tree.
+      const target = getComposedEventTarget(event);
       const dragData =
         dataTransfer != null ? dataTransfer.getData(DRAG_DATA_FORMAT) : "";
       const draggedNode = $getNodeByKey(dragData);
@@ -370,6 +417,10 @@ function useDraggableBlockMenu(
         return false;
       }
       if (targetNode === draggedNode) {
+        // Firefox-specific fix: Even when no move occurs, restore focus to ensure cursor visibility
+        if (IS_FIREFOX) {
+          editor.focus();
+        }
         return true;
       }
       const targetBlockElemTop = targetBlockElem.getBoundingClientRect().top;
@@ -379,6 +430,15 @@ function useDraggableBlockMenu(
         targetNode.insertBefore(draggedNode);
       }
       setDraggableBlockElem(null);
+
+      // Firefox-specific fix: Use editor.focus() after drop to properly restore
+      // both focus and selection. This ensures cursor visibility immediately.
+      if (IS_FIREFOX) {
+        // Using $onUpdate ensures this happens after the current update cycle finishes
+        $onUpdate(() => {
+          editor.focus();
+        });
+      }
 
       return true;
     }
@@ -403,12 +463,69 @@ function useDraggableBlockMenu(
     );
   });
 
+  // Firefox-specific: Prevent blur when clicking on drag handle to maintain cursor visibility.
+  // Firefox fires blur before dragstart, causing focus loss. We detect this by checking if
+  // the blur's relatedTarget is on the menu using isOnMenu, then restore focus synchronously.
+  createEffect(() => {
+    if (!IS_FIREFOX || !isEditable()) {
+      return;
+    }
+
+    onCleanup(
+      mergeRegister(
+        editor.registerRootListener((rootElement) => {
+          function onBlur(event: FocusEvent) {
+            const relatedTarget = event.relatedTarget;
+            if (isHTMLElement(relatedTarget) && isOnMenu(relatedTarget)) {
+              // Blur is caused by clicking on drag handle - restore focus immediately
+              // to prevent cursor from disappearing. This must be synchronous to work.
+              if (rootElement) {
+                restoreEditorFocus(editor, rootElement);
+              }
+              // Prevent the event from propagating to LexicalEvents handler
+              event.stopImmediatePropagation();
+            }
+          }
+
+          if (rootElement) {
+            return registerEventListener(rootElement, "blur", onBlur, true);
+          }
+        }),
+        // Intercept BLUR_COMMAND if focus is on the menu (fallback in case event propagation wasn't stopped)
+        editor.registerCommand(
+          BLUR_COMMAND,
+          () => {
+            const rootElement = editor.getRootElement();
+            // getActiveElementDeep so the menu is found whether it is portaled
+            // into the light DOM or inside a shadow root (where
+            // document.activeElement only reports the shadow host).
+            const activeElement = getActiveElementDeep(
+              getRootOwnerDocument(rootElement)
+            );
+            if (
+              rootElement &&
+              isHTMLElement(activeElement) &&
+              isOnMenu(activeElement)
+            ) {
+              // Focus is on menu - restore to root and prevent blur command
+              restoreEditorFocus(editor, rootElement);
+              return true; // Prevent command from propagating
+            }
+            return false;
+          },
+          COMMAND_PRIORITY_HIGH
+        )
+      )
+    );
+  });
+
   function onDragStart(event: DragEvent): void {
     const dataTransfer = event.dataTransfer;
     const draggableBlockElemUnwrapped = draggableBlockElem();
     if (!dataTransfer || !draggableBlockElemUnwrapped) {
       return;
     }
+
     setDragImage(dataTransfer, draggableBlockElemUnwrapped);
     let nodeKey = "";
     editor.update(() => {
@@ -419,16 +536,38 @@ function useDraggableBlockMenu(
     });
     isDraggingBlockRef.current = true;
     dataTransfer.setData(DRAG_DATA_FORMAT, nodeKey);
+
+    // Firefox-specific: Restore focus synchronously after drag starts to prevent cursor loss.
+    // The blur handler should have already restored focus, but we do it here as a fallback
+    // and to ensure selection is properly maintained during drag.
+    if (IS_FIREFOX) {
+      const rootElement = editor.getRootElement();
+      // getActiveElement rather than document.activeElement, which reports the
+      // shadow host when the editor is in a shadow root.
+      if (
+        rootElement !== null &&
+        getActiveElement(rootElement) !== rootElement
+      ) {
+        // Restore focus synchronously - don't use requestAnimationFrame as blur already happened
+        // and we need immediate focus restoration to maintain cursor visibility
+        restoreEditorFocus(editor, rootElement);
+      }
+    }
   }
 
   function onDragEnd(): void {
     isDraggingBlockRef.current = false;
     hideTargetLine(targetLineRef());
+
+    const rootElement = editor.getRootElement();
+    if (rootElement !== null && getActiveElement(rootElement) !== rootElement) {
+      restoreEditorFocus(editor, rootElement);
+    }
   }
   return (
     <Portal mount={anchorElem}>
       <div draggable={true} onDragStart={onDragStart} onDragEnd={onDragEnd}>
-        {isEditable && menuComponent}
+        {isEditable() && menuComponent}
       </div>
       {targetLineComponent}
     </Portal>
@@ -445,12 +584,15 @@ export function DraggableBlockPlugin_EXPERIMENTAL(props: {
   onElementChanged?: (element: HTMLElement | null) => void;
 }): JSX.Element {
   const [editor] = useLexicalComposerContext();
+  // Subscribed rather than read off the editor, so that setEditable() actually
+  // re-renders the handle.
+  const isEditable = useLexicalEditable();
   return useDraggableBlockMenu(
     editor,
     props.anchorElem || document.body,
     () => props.menuRef || null,
     () => props.targetLineRef || null,
-    editor._editable,
+    isEditable,
     props.menuComponent,
     props.targetLineComponent,
     props.isOnMenu,

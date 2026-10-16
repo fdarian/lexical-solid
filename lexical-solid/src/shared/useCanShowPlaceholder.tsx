@@ -1,14 +1,14 @@
-import { LexicalEditor } from "lexical";
+import { type LexicalEditor, mergeRegister } from "lexical";
 import { $canShowPlaceholderCurry } from "@lexical/text";
-import { mergeRegister } from "@lexical/utils";
 import { Accessor, createSignal, onCleanup, onMount } from "solid-js";
 
 function canShowPlaceholderFromCurrentEditorState(
   editor: LexicalEditor
 ): boolean {
-  const currentCanShowPlaceholder = editor
-    .getEditorState()
-    .read($canShowPlaceholderCurry(editor.isComposing()));
+  const currentCanShowPlaceholder = editor.read(
+    "latest",
+    $canShowPlaceholderCurry(editor.isComposing())
+  );
 
   return currentCanShowPlaceholder;
 }

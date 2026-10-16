@@ -1,8 +1,14 @@
-import type { Klass, LexicalEditor, LexicalNode, NodeKey } from "lexical";
+import {
+  $findMatchingParent,
+  $getNearestNodeFromDOMNode,
+  registerEventListener,
+  type Klass,
+  type LexicalEditor,
+  type LexicalNode,
+  type NodeKey,
+} from "lexical";
 
 import { useLexicalComposerContext } from "./LexicalComposerContext";
-import { $findMatchingParent } from "@lexical/utils";
-import { $getNearestNodeFromDOMNode } from "lexical";
 import { createEffect, untrack } from "solid-js";
 
 const capturedEvents = new Set<string>(["mouseenter", "mouseleave"]);
@@ -42,13 +48,14 @@ export function NodeEventPlugin(props: {
       });
     };
 
-    return editor.registerRootListener((rootElement, prevRootElement) => {
+    return editor.registerRootListener((rootElement) => {
       if (rootElement) {
-        rootElement.addEventListener(eventType, onEvent, isCaptured);
-      }
-
-      if (prevRootElement) {
-        prevRootElement.removeEventListener(eventType, onEvent, isCaptured);
+        return registerEventListener(
+          rootElement,
+          eventType,
+          onEvent,
+          isCaptured
+        );
       }
     });
   });

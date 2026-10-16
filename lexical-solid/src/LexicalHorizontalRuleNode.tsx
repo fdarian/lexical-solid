@@ -1,32 +1,29 @@
 import {
+  $isHorizontalRuleNode,
+  HorizontalRuleNode as BaseHorizontalRuleNode,
+  INSERT_HORIZONTAL_RULE_COMMAND,
+  type SerializedHorizontalRuleNode,
+} from "@lexical/extension";
+import {
   $applyNodeReplacement,
+  addClassNamesToElement,
   CLICK_COMMAND,
   COMMAND_PRIORITY_LOW,
-  DOMConversionMap,
-  DOMConversionOutput,
-  DOMExportOutput,
-  EditorConfig,
-  LexicalCommand,
-  LexicalNode,
-  NodeKey,
-  SerializedLexicalNode,
+  type DOMConversionOutput,
+  getComposedEventTarget,
+  mergeRegister,
+  type NodeKey,
+  removeClassNamesFromElement,
 } from "lexical";
-
 import { createEffect, JSX, onCleanup } from "solid-js";
-
-import { createCommand, DecoratorNode } from "lexical";
 import { useLexicalComposerContext } from "./LexicalComposerContext";
 import { useLexicalNodeSelection } from "./useLexicalNodeSelection";
-import {
-  addClassNamesToElement,
-  mergeRegister,
-  removeClassNamesFromElement,
-} from "@lexical/utils";
 
-export type SerializedHorizontalRuleNode = SerializedLexicalNode;
-
-export const INSERT_HORIZONTAL_RULE_COMMAND: LexicalCommand<void> =
-  createCommand("INSERT_HORIZONTAL_RULE_COMMAND");
+export {
+  $isHorizontalRuleNode,
+  INSERT_HORIZONTAL_RULE_COMMAND,
+  type SerializedHorizontalRuleNode,
+};
 
 function HorizontalRuleComponent(props: { nodeKey: NodeKey }) {
   const [editor] = useLexicalComposerContext();
@@ -42,11 +39,11 @@ function HorizontalRuleComponent(props: { nodeKey: NodeKey }) {
           (event: MouseEvent) => {
             const hrElem = editor.getElementByKey(props.nodeKey);
 
-            if (event.target === hrElem) {
+            if (getComposedEventTarget(event) === hrElem) {
               if (!event.shiftKey) {
                 clearSelection();
               }
-              setSelected(!isSelected);
+              setSelected(!isSelected());
               return true;
             }
 
@@ -73,50 +70,24 @@ function HorizontalRuleComponent(props: { nodeKey: NodeKey }) {
   return null;
 }
 
-export class HorizontalRuleNode extends DecoratorNode<JSX.Element> {
-  static getType(): string {
-    return "horizontalrule";
-  }
-
-  static clone(node: HorizontalRuleNode): HorizontalRuleNode {
-    return new HorizontalRuleNode(node.__key);
-  }
-
-  static importJSON(
-    serializedNode: SerializedHorizontalRuleNode
-  ): HorizontalRuleNode {
-    return $createHorizontalRuleNode().updateFromJSON(serializedNode);
-  }
-
-  static importDOM(): DOMConversionMap | null {
-    return {
-      hr: () => ({
-        conversion: $convertHorizontalRuleElement,
-        priority: 0,
-      }),
-    };
-  }
-
-  exportDOM(): DOMExportOutput {
-    return { element: document.createElement("hr") };
-  }
-
-  createDOM(config: EditorConfig): HTMLElement {
-    const element = document.createElement("hr");
-    addClassNamesToElement(element, config.theme.hr);
-    return element;
-  }
-
-  getTextContent(): string {
-    return "\n";
-  }
-
-  isInline(): false {
-    return false;
-  }
-
-  updateDOM(): boolean {
-    return false;
+/**
+ * @deprecated A pure Lexical implementation is available in `@lexical/extension` as HorizontalRuleExtension
+ */
+export class HorizontalRuleNode extends BaseHorizontalRuleNode {
+  $config() {
+    // Named rather than left to the runtime default, for the reason the base
+    // node names its own: it is what carries this config on the record the
+    // composed serialization types walk. The shape still matches the base
+    // node's, whose 'horizontalrule' type this deprecated subclass reuses.
+    return this.config("horizontalrule", {
+      extends: BaseHorizontalRuleNode,
+      importDOM: {
+        hr: () => ({
+          conversion: $convertHorizontalRuleElement,
+          priority: 0,
+        }),
+      },
+    });
   }
 
   decorate(): JSX.Element {
@@ -128,12 +99,9 @@ function $convertHorizontalRuleElement(): DOMConversionOutput {
   return { node: $createHorizontalRuleNode() };
 }
 
+/**
+ * @deprecated A pure Lexical implementation is available in `@lexical/extension` as HorizontalRuleExtension
+ */
 export function $createHorizontalRuleNode(): HorizontalRuleNode {
   return $applyNodeReplacement(new HorizontalRuleNode());
-}
-
-export function $isHorizontalRuleNode(
-  node: LexicalNode | undefined | null
-): boolean {
-  return node instanceof HorizontalRuleNode;
 }

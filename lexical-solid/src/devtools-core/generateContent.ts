@@ -1,33 +1,36 @@
-import type {
-  BaseSelection,
-  ElementNode,
-  LexicalEditor,
-  LexicalNode,
-  ParagraphNode,
-  RangeSelection,
-  TextNode,
-} from "lexical";
+import type { LexicalCommandLog } from "./useLexicalCommandsLog";
 
 import { $generateHtmlFromNodes } from "@lexical/html";
-import { $isLinkNode, LinkNode } from "@lexical/link";
+import { $isLinkNode, type LinkNode } from "@lexical/link";
 import { $isMarkNode } from "@lexical/mark";
-import { $isTableSelection, TableSelection } from "@lexical/table";
+import { $isTableSelection, type TableSelection } from "@lexical/table";
 import {
   $getRoot,
   $getSelection,
+  $getSlot,
+  $getSlotHost,
+  $getSlotNames,
+  $getSlotNameWithinHost,
+  $isDecoratorNode,
   $isElementNode,
   $isNodeSelection,
   $isParagraphNode,
   $isRangeSelection,
   $isTextNode,
+  type BaseSelection,
+  type DecoratorNode,
+  type ElementNode,
+  type LexicalEditor,
+  type LexicalNode,
+  type ParagraphNode,
+  type RangeSelection,
+  type TextNode,
 } from "lexical";
-
-import { LexicalCommandLog } from "./useLexicalCommandsLog";
 
 export type CustomPrintNodeFn = (
   node: LexicalNode,
   obfuscateText?: boolean
-) => string;
+) => string | undefined;
 
 const NON_SINGLE_WIDTH_CHARS_REPLACEMENT: Readonly<Record<string, string>> =
   Object.freeze({
@@ -99,49 +102,61 @@ export function generateContent(
 
   if (exportDOM) {
     let htmlString = "";
-    editorState.read(() => {
-      htmlString = printPrettyHTML($generateHtmlFromNodes(editor));
-    });
+    editorState.read(
+      () => {
+        htmlString = printPrettyHTML($generateHtmlFromNodes(editor));
+      },
+      { editor }
+    );
     return htmlString;
   }
 
   let res = " root\n";
 
-  const selectionString = editorState.read(() => {
-    const selection = $getSelection();
+  const selectionString = editorState.read(
+    () => {
+      const selection = $getSelection();
 
-    visitTree($getRoot(), (node: LexicalNode, indent: Array<string>) => {
-      const nodeKey = node.getKey();
-      const nodeKeyDisplay = `(${nodeKey})`;
-      const typeDisplay = node.getType() || "";
-      const isSelected = node.isSelected();
+      $visitTree(
+        $getRoot(),
+        (node: LexicalNode, indent: Array<string>, slotName?: string) => {
+          const nodeKey = node.getKey();
+          const nodeKeyDisplay = `(${nodeKey})`;
+          const typeDisplay = node.getType() || "";
+          const isSelected = node.isSelected();
+          const slotPrefix =
+            slotName !== undefined ? `[slot: ${slotName}] ` : "";
+          const slotMeta = $slotValueMetaSuffix(node, slotName);
 
-      res += `${isSelected ? SYMBOLS.selectedLine : " "} ${indent.join(
-        " "
-      )} ${nodeKeyDisplay} ${typeDisplay} ${printNode(
-        node,
-        customPrintNode,
-        obfuscateText
-      )}\n`;
+          res += `${isSelected ? SYMBOLS.selectedLine : " "} ${indent.join(
+            " "
+          )} ${nodeKeyDisplay} ${slotPrefix}${typeDisplay}${slotMeta} ${printNode(
+            node,
+            customPrintNode,
+            obfuscateText
+          )}\n`;
 
-      res += $printSelectedCharsLine({
-        indent,
-        isSelected,
-        node,
-        nodeKeyDisplay,
-        selection,
-        typeDisplay,
-      });
-    });
+          res += $printSelectedCharsLine({
+            indent,
+            isSelected,
+            node,
+            nodeKeyDisplay,
+            selection,
+            typeDisplay,
+          });
+        }
+      );
 
-    return selection === null
-      ? ": null"
-      : $isRangeSelection(selection)
-      ? printRangeSelection(selection)
-      : $isTableSelection(selection)
-      ? printTableSelection(selection)
-      : printNodeSelection(selection);
-  });
+      return selection === null
+        ? ": null"
+        : $isRangeSelection(selection)
+        ? $printRangeSelection(selection)
+        : $isTableSelection(selection)
+        ? printTableSelection(selection)
+        : printNodeSelection(selection);
+    },
+    { editor }
+  );
 
   res += "\n selection" + selectionString;
 
@@ -167,12 +182,18 @@ export function generateContent(
   return res;
 }
 
-function printRangeSelection(selection: RangeSelection): string {
+function $printRangeSelection(selection: RangeSelection): string {
   let res = "";
 
   const formatText = printFormatProperties(selection);
 
-  res += `: range ${formatText !== "" ? `{ ${formatText} }` : ""} ${
+  const anchorSlot = $resolveSlotContext(selection.anchor.getNode());
+  const slotSuffix =
+    anchorSlot !== null
+      ? ` (in slot "${anchorSlot.name}" of ${anchorSlot.host.getType()} { key: ${anchorSlot.host.getKey()} })`
+      : "";
+
+  res += `: range${slotSuffix} ${formatText !== "" ? `{ ${formatText} }` : ""} ${
     selection.style !== "" ? `{ style: ${selection.style} } ` : ""
   }`;
 
@@ -191,6 +212,53 @@ function printRangeSelection(selection: RangeSelection): string {
   return res;
 }
 
+// Walk up from `node`, following both __parent and __slotHost, until a
+// slot child surfaces -- i.e. a node whose `$getSlotNameWithinHost` is not
+// null. Returns the slot name and the host that owns it, so the devtools
+// can show callers like the selection panel which named slot a caret /
+// anchor currently sits in.
+function $resolveSlotContext(
+  node: LexicalNode
+): { name: string; host: LexicalNode } | null {
+  let cursor: LexicalNode | null = node;
+  while (cursor !== null) {
+    const slotName = $getSlotNameWithinHost(cursor);
+    if (slotName !== null) {
+      const host = $getSlotHost(cursor);
+      if (host !== null) {
+        return { host, name: slotName };
+      }
+    }
+    cursor = cursor.getParent() ?? $getSlotHost(cursor);
+  }
+  return null;
+}
+
+// True when the node is a slot-friendly value that the devtools should
+// annotate with its semantic role. Shadow-root ElementNodes (editable
+// slot values like a Card's title) get `[shadow-root]`; non-inline
+// DecoratorNodes that sit in a slot (atomic decorator slot values like a
+// Figure's media) get `[atomic decorator]`. Regular children fall
+// through with no suffix. Both branches gate on `slotName !== undefined`
+// -- other shadow-root ElementNodes (table cells, layout items, page
+// content, collapsibles) aren't slot values and shouldn't pick up the
+// marker outside this feature's scope.
+function $slotValueMetaSuffix(
+  node: LexicalNode,
+  slotName: string | undefined
+): string {
+  if (slotName === undefined) {
+    return "";
+  }
+  if ($isElementNode(node) && node.isShadowRoot()) {
+    return " [shadow-root]";
+  }
+  if ($isDecoratorNode(node) && !(node as DecoratorNode<unknown>).isInline()) {
+    return " [atomic decorator]";
+  }
+  return "";
+}
+
 function printNodeSelection(selection: BaseSelection): string {
   if (!$isNodeSelection(selection)) {
     return "";
@@ -202,36 +270,70 @@ function printTableSelection(selection: TableSelection): string {
   return `: table\n  └ { table: ${selection.tableKey}, anchorCell: ${selection.anchor.key}, focusCell: ${selection.focus.key} }`;
 }
 
-function visitTree(
-  currentNode: ElementNode,
-  visitor: (node: LexicalNode, indentArr: Array<string>) => void,
+function $visitTree(
+  currentNode: ElementNode | DecoratorNode<unknown>,
+  visitor: (
+    node: LexicalNode,
+    indentArr: Array<string>,
+    slotName?: string
+  ) => void,
   indent: Array<string> = []
 ) {
-  const childNodes = currentNode.getChildren();
-  const childNodesLength = childNodes.length;
+  // Slot children walk first (slots-first, mirroring the reconciler /
+  // host DOM order), then the regular children list. `visitor` gets the
+  // slot name for slot values so the devtools can annotate them.
+  const slotEntries: Array<[string, LexicalNode]> = [];
+  for (const slotName of $getSlotNames(currentNode)) {
+    const slotNode = $getSlot(currentNode, slotName);
+    if (slotNode !== null) {
+      slotEntries.push([slotName, slotNode]);
+    }
+  }
+  const childNodes = $isElementNode(currentNode)
+    ? currentNode.getChildren()
+    : [];
+  const totalCount = slotEntries.length + childNodes.length;
+  let i = 0;
 
-  childNodes.forEach((childNode, i) => {
+  for (const [slotName, slotNode] of slotEntries) {
+    const isLast = i === totalCount - 1;
     visitor(
-      childNode,
-      indent.concat(
-        i === childNodesLength - 1
-          ? SYMBOLS.isLastChild
-          : SYMBOLS.hasNextSibling
-      )
+      slotNode,
+      indent.concat(isLast ? SYMBOLS.isLastChild : SYMBOLS.hasNextSibling),
+      slotName
     );
-
-    if ($isElementNode(childNode)) {
-      visitTree(
-        childNode,
+    if ($isElementNode(slotNode) || $isDecoratorNode(slotNode)) {
+      $visitTree(
+        slotNode,
         visitor,
         indent.concat(
-          i === childNodesLength - 1
-            ? SYMBOLS.ancestorIsLastChild
-            : SYMBOLS.ancestorHasNextSibling
+          isLast ? SYMBOLS.ancestorIsLastChild : SYMBOLS.ancestorHasNextSibling
         )
       );
     }
-  });
+    i++;
+  }
+
+  for (const childNode of childNodes) {
+    const isLast = i === totalCount - 1;
+    visitor(
+      childNode,
+      indent.concat(isLast ? SYMBOLS.isLastChild : SYMBOLS.hasNextSibling)
+    );
+    // DecoratorNodes can host slots too, so recurse into them like the
+    // slot-entry loop above; a decorator's slot subtree would otherwise be
+    // invisible whenever the host is reached through the children channel.
+    if ($isElementNode(childNode) || $isDecoratorNode(childNode)) {
+      $visitTree(
+        childNode,
+        visitor,
+        indent.concat(
+          isLast ? SYMBOLS.ancestorIsLastChild : SYMBOLS.ancestorHasNextSibling
+        )
+      );
+    }
+    i++;
+  }
 }
 
 function normalize(text: string, obfuscateText: boolean = false) {
@@ -307,6 +409,7 @@ function printAllTextNodeProperties(node: TextNode) {
     printFormatProperties(node),
     printDetailProperties(node),
     printModeProperties(node),
+    printStateProperties(node),
   ]
     .filter(Boolean)
     .join(", ");
@@ -317,6 +420,7 @@ function printAllLinkNodeProperties(node: LinkNode) {
     printTargetProperties(node),
     printRelProperties(node),
     printTitleProperties(node),
+    printStateProperties(node),
   ]
     .filter(Boolean)
     .join(", ");
@@ -384,6 +488,25 @@ function printTitleProperties(node: LinkNode) {
   // TODO Fix nullish on LinkNode
   if (str != null) {
     str = "title: " + str;
+  }
+  return str;
+}
+
+function printStateProperties(node: LexicalNode) {
+  if (!node.__state) {
+    return false;
+  }
+  const states = [];
+  for (const [stateType, value] of node.__state.knownState.entries()) {
+    if (stateType.isEqual(value, stateType.defaultValue)) {
+      continue;
+    }
+    const textValue = JSON.stringify(stateType.unparse(value));
+    states.push(`[${stateType.key}: ${textValue}]`);
+  }
+  let str = states.join(",");
+  if (str !== "") {
+    str = "state: " + str;
   }
   return str;
 }

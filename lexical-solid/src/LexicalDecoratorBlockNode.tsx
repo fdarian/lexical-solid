@@ -8,7 +8,7 @@ import type {
 } from "lexical";
 import type { JSX } from "solid-js";
 
-import { DecoratorNode } from "lexical";
+import { $getDocument, DecoratorNode } from "lexical";
 
 export type SerializedDecoratorBlockNode = Spread<
   {
@@ -46,7 +46,7 @@ export class DecoratorBlockNode extends DecoratorNode<JSX.Element> {
   }
 
   createDOM(): HTMLElement {
-    return document.createElement("div");
+    return $getDocument().createElement("div");
   }
 
   updateDOM(): false {
@@ -57,6 +57,10 @@ export class DecoratorBlockNode extends DecoratorNode<JSX.Element> {
     const self = this.getWritable();
     self.__format = format;
     return self;
+  }
+
+  getFormat(): ElementFormatType {
+    return this.getLatest().__format;
   }
 
   isInline(): false {

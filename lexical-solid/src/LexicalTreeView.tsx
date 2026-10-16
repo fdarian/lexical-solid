@@ -1,4 +1,4 @@
-import type { EditorState, LexicalEditor } from "lexical";
+import { type EditorState, type LexicalEditor, mergeRegister } from "lexical";
 
 import {
   CustomPrintNodeFn,
@@ -6,9 +6,8 @@ import {
   TreeView as TreeViewCore,
   useLexicalCommandsLog,
 } from "./devtools-core";
-import { mergeRegister } from "@lexical/utils";
 import { JSX } from "solid-js/jsx-runtime";
-import { createEffect, createSignal, onCleanup, onMount } from "solid-js";
+import { createEffect, createSignal, onCleanup } from "solid-js";
 
 /**
  * TreeView is a React component that provides a visual representation of
@@ -46,15 +45,20 @@ export function TreeView(props: {
 
   const commandsLog = useLexicalCommandsLog(props.editor);
 
-  onMount(() => {
+  createEffect(() => {
+    const editor = props.editor;
+    // The state was seeded once, so re-read it here: when the editor prop
+    // changes, neither listener has fired yet for the new editor and the view
+    // would keep rendering the previous editor's state.
+    setEditorCurrentState(editor.getEditorState());
     // Registers listeners to update the tree view when the editor state changes
     onCleanup(
       mergeRegister(
-        props.editor.registerUpdateListener(({ editorState }) => {
+        editor.registerUpdateListener(({ editorState }) => {
           setEditorCurrentState(editorState);
         }),
-        props.editor.registerEditableListener(() => {
-          setEditorCurrentState(props.editor.getEditorState());
+        editor.registerEditableListener(() => {
+          setEditorCurrentState(editor.getEditorState());
         })
       )
     );

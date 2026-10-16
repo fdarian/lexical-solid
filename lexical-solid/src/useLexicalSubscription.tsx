@@ -8,6 +8,11 @@ import {
   onCleanup,
 } from "solid-js";
 
+/**
+ * Describes how {@link useLexicalSubscription} reads a value from the editor: an
+ * `initialValueFn` that computes the current value, and a `subscribe` function
+ * that registers a listener for changes and returns an unsubscribe callback.
+ */
 export type LexicalSubscription<T> = {
   initialValueFn: () => T;
   subscribe: (callback: (value: T) => void) => () => void;

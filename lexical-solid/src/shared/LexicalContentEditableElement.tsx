@@ -12,6 +12,14 @@ import {
 } from "solid-js";
 import { useLexicalComposerContext } from "../LexicalComposerContext";
 
+/**
+ * Props for the {@link ContentEditableElement} component. In addition to an
+ * `editor`, it accepts the standard `<div>` HTML attributes (except
+ * `placeholder`), including the hyphenated `aria-*` attributes, which are the
+ * preferred way to set ARIA properties. The camelCase `aria*` props (such as
+ * `ariaLabel`) are also accepted but are retained only for backwards
+ * compatibility.
+ */
 export type ContentEditableElementProps = {
   editor: LexicalEditor;
   ariaActiveDescendant?: JSX.HTMLAttributes<HTMLDivElement>["aria-activedescendant"];
@@ -30,6 +38,14 @@ export type ContentEditableElementProps = {
   "data-testid"?: string | null | undefined;
 } & Omit<JSX.HTMLAttributes<HTMLDivElement>, "placeholder">;
 
+/**
+ * A lower-level building block for the editor's editable `<div>`. It binds the
+ * given `editor` to the rendered element via
+ * {@link LexicalEditor.setRootElement}, reflects the editor's editable state on
+ * the `contentEditable` attribute, and applies the provided ARIA and HTML
+ * attributes. Prefer {@link ContentEditable}, which reads the editor from
+ * context and adds placeholder support, unless you need this extra control.
+ */
 export function ContentEditableElement(props: ContentEditableElementProps): JSX.Element {
   props = mergeProps(
     {
@@ -121,10 +137,10 @@ export function ContentEditableElement(props: ContentEditableElementProps): JSX.
       data-testid={props["data-testid"]}
       id={props.id}
       ref={mergeRefs(props.ref as (arg: HTMLDivElement) => void, handleRef)}
-      role={isEditable() ? props.role : undefined}
+      role={props.role}
       spellcheck={props.spellcheck}
       style={props.style}
-      tabIndex={props.tabIndex}
+      tabIndex={props.tabIndex ?? (isEditable() ? undefined : -1)}
       {...rest}
     />
   );

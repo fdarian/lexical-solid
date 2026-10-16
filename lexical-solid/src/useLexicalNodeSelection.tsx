@@ -19,7 +19,7 @@ import { createSignal, onCleanup, onMount } from "solid-js";
  */
 
 function isNodeSelected(editor: LexicalEditor, key: NodeKey): boolean {
-  return editor.getEditorState().read(() => {
+  return editor.read("latest", () => {
     const node = $getNodeByKey(key);
     if (node === null) {
       return false; // Node doesn't exist, so it's not selected.
@@ -40,6 +40,9 @@ function isNodeSelected(editor: LexicalEditor, key: NodeKey): boolean {
  * @returns {[boolean, (selected: boolean) => void, () => void]} A tuple containing:
  * - `isSelected` (boolean): Whether the node is currently selected.
  * - `setSelected` (function): A function to set the selection state of the node.
+ *   `setSelected(false)` is a no-op when the node is not part of the current
+ *   selection, so that deselecting something already unselected cannot discard
+ *   the user's caret.
  * - `clearSelected` (function): A function to clear the selection of the node.
  *
  */
@@ -70,6 +73,17 @@ export function useLexicalNodeSelection(
     editor.update(() => {
       let selection = $getSelection();
       if (!$isNodeSelection(selection)) {
+        const node = selected ? null : $getNodeByKey(key);
+        if (node !== null && !node.isSelected()) {
+          // Nothing to remove: this node is not part of the current
+          // selection, and replacing it with an empty NodeSelection would
+          // discard the user's caret for no benefit.
+          return;
+        }
+        // Deselecting a node the selection *does* cover still has to take
+        // effect, or a `clearSelection(); setSelected(!isSelected)` toggle
+        // becomes a dead click under a RangeSelection: isSelected() is true
+        // for those, so the toggle arrives here with `false`.
         selection = $createNodeSelection();
         $setSelection(selection);
       }

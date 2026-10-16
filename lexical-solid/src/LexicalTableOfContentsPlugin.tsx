@@ -144,7 +144,7 @@ export function TableOfContentsPlugin({ children }: Props): JSX.Element {
   createEffect(() => {
     // Set table of contents initial state
     let currentTableOfContents: Array<TableOfContentsEntry> = [];
-    editor.getEditorState().read(() => {
+    editor.read("latest", () => {
       const updateCurrentTableOfContents = (node: ElementNode) => {
         for (const child of node.getChildren()) {
           if ($isHeadingNode(child)) {
@@ -198,11 +198,11 @@ export function TableOfContentsPlugin({ children }: Props): JSX.Element {
     const removeHeaderMutationListener = editor.registerMutationListener(
       HeadingNode,
       (mutatedNodes: Map<string, NodeMutation>) => {
-        editor.getEditorState().read(() => {
+        editor.read("latest", () => {
           for (const [nodeKey, mutation] of mutatedNodes) {
             if (mutation === "created") {
-              const newHeading = $getNodeByKey<HeadingNode>(nodeKey);
-              if (newHeading !== null) {
+              const newHeading = $getNodeByKey(nodeKey);
+              if ($isHeadingNode(newHeading)) {
                 const prevHeading = $getPreviousHeading(newHeading);
                 currentTableOfContents = $insertHeadingIntoTableOfContents(
                   prevHeading,
@@ -216,8 +216,8 @@ export function TableOfContentsPlugin({ children }: Props): JSX.Element {
                 currentTableOfContents
               );
             } else if (mutation === "updated") {
-              const newHeading = $getNodeByKey<HeadingNode>(nodeKey);
-              if (newHeading !== null) {
+              const newHeading = $getNodeByKey(nodeKey);
+              if ($isHeadingNode(newHeading)) {
                 const prevHeading = $getPreviousHeading(newHeading);
                 currentTableOfContents = $updateHeadingPosition(
                   prevHeading,
@@ -238,7 +238,7 @@ export function TableOfContentsPlugin({ children }: Props): JSX.Element {
     const removeTextNodeMutationListener = editor.registerMutationListener(
       TextNode,
       (mutatedNodes: Map<string, NodeMutation>) => {
-        editor.getEditorState().read(() => {
+        editor.read("latest", () => {
           for (const [nodeKey, mutation] of mutatedNodes) {
             if (mutation === "updated") {
               const currNode = $getNodeByKey(nodeKey);

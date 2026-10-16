@@ -1,45 +1,15 @@
+import { registerClearEditor } from "@lexical/extension";
+import { createEffect, JSX, onCleanup } from "solid-js";
 import { useLexicalComposerContext } from "./LexicalComposerContext";
-import {
-  $createParagraphNode,
-  $getRoot,
-  $getSelection,
-  $isRangeSelection,
-  CLEAR_EDITOR_COMMAND,
-  COMMAND_PRIORITY_EDITOR,
-} from "lexical";
-import { JSX, onCleanup } from "solid-js";
 
 type Props = Readonly<{
   onClear?: () => void;
 }>;
 
-export function ClearEditorPlugin(props: Props): JSX.Element {
+export function ClearEditorPlugin(props: Props): JSX.Element | null {
   const [editor] = useLexicalComposerContext();
-  onCleanup(
-    editor.registerCommand(
-      CLEAR_EDITOR_COMMAND,
-      (_payload) => {
-        editor.update(() => {
-          if (props.onClear == null) {
-            const root = $getRoot();
-            const selection = $getSelection();
-            const paragraph = $createParagraphNode();
-            root.clear();
-            root.append(paragraph);
-            if (selection !== null) {
-              paragraph.select();
-            }
-            if ($isRangeSelection(selection)) {
-              selection.format = 0;
-            }
-          } else {
-            props.onClear();
-          }
-        });
-        return true;
-      },
-      COMMAND_PRIORITY_EDITOR
-    )
-  );
+  createEffect(() => {
+    onCleanup(registerClearEditor(editor, props.onClear));
+  });
   return null;
 }
