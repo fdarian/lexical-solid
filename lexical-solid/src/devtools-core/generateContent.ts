@@ -172,7 +172,8 @@ export function generateContent(
     res += "\n  └ None dispatched.";
   }
 
-  res += "\n\n editor:";
+  const version = editor.constructor.version;
+  res += `\n\n editor${version ? ` (v${version})` : ""}:`;
   res += `\n  └ namespace ${editorConfig.namespace}`;
   if (compositionKey !== null) {
     res += `\n  └ compositionKey ${compositionKey}`;
@@ -565,7 +566,7 @@ function $printSelectedCharsLine({
   ];
   const unselectedChars = Array(start + 1).fill(" ");
   const selectedChars = Array(end - start).fill(SYMBOLS.selectedChar);
-  const paddingLength = typeDisplay.length + 3; // 2 for the spaces around + 1 for the double quote.
+  const paddingLength = typeDisplay.length + 2; // 1 for the space after + 1 for the double quote.
 
   const nodePrintSpaces = Array(nodeKeyDisplay.length + paddingLength).fill(
     " "
