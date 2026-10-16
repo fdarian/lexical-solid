@@ -3,24 +3,20 @@ import {
   createLexicalComposerContext,
   LexicalComposerContext,
 } from "./LexicalComposerContext";
-import { useCollaborationContext } from "./LexicalCollaborationContext";
+import { CollaborationContext } from "./LexicalCollaborationContext";
 import {
+  createSharedNodeState,
   EditorThemeClasses,
+  getRegisteredNode,
+  getTransformSetFromKlass,
   Klass,
   LexicalEditor,
   LexicalNode,
   LexicalNodeReplacement,
 } from "lexical";
-import type { EditableListener, KlassConstructor, Transform } from "lexical";
+import type { EditableListener } from "lexical";
 import { createEffect, JSX, onCleanup, useContext } from "solid-js";
 import warnOnlyOnce from "./shared/warnOnlyOnce";
-
-function getTransformSetFromKlass(
-  klass: KlassConstructor<typeof LexicalNode>
-): Set<Transform<LexicalNode>> {
-  const transform = klass.transform();
-  return new Set(transform ? [transform] : []);
-}
 
 export interface LexicalNestedComposerProps {
   /**
@@ -121,17 +117,20 @@ export function LexicalNestedComposer(
           klass: entry.klass,
           replace: entry.replace,
           replaceWithKlass: entry.replaceWithKlass,
+          sharedNodeState: createSharedNodeState(entry.klass),
           transforms: getTransformSetFromKlass(entry.klass),
         });
       }
     } else if (!explicitNamespace) {
-      initialNodesWarning();
-      if (!explicitNamespace) {
-        explicitNamespaceWarning();
-        initialEditor._config.namespace = parentEditor._config.namespace;
-      }
+      explicitNamespaceWarning();
+      initialEditor._config.namespace = parentEditor._config.namespace;
     }
   } else {
+    initialNodesWarning();
+    if (!explicitNamespace) {
+      explicitNamespaceWarning();
+      initialEditor._config.namespace = parentEditor._config.namespace;
+    }
     for (let klass of props.initialNodes) {
       let replace = null;
       let replaceWithKlass = null;
@@ -142,24 +141,29 @@ export function LexicalNestedComposer(
         replace = options.with;
         replaceWithKlass = options.withKlass || null;
       }
-      const registeredKlass = props.initialEditor._nodes.get(klass.getType());
+      const registeredKlass = getRegisteredNode(
+        initialEditor,
+        klass.getType()
+      );
       props.initialEditor._nodes.set(klass.getType(), {
         exportDOM: registeredKlass ? registeredKlass.exportDOM : undefined,
         klass,
         replace,
         replaceWithKlass,
+        sharedNodeState: createSharedNodeState(klass),
         transforms: getTransformSetFromKlass(klass),
       });
     }
   }
 
   // If collaboration is enabled, make sure we don't render the children until the collaboration subdocument is ready.
-  const { isCollabActive, yjsDocMap } = useCollaborationContext();
+  const collabContext = useContext(CollaborationContext);
+  const yjsDocMap = collabContext?.yjsDocMap;
 
   const isCollabReady = () =>
     props.skipCollabChecks ||
     wasCollabPreviouslyReadyRef ||
-    yjsDocMap.has(props.initialEditor.getKey());
+    (yjsDocMap && yjsDocMap.has(props.initialEditor.getKey()));
 
   createEffect(() => {
     if (isCollabReady()) {
@@ -179,7 +183,7 @@ export function LexicalNestedComposer(
 
   return (
     <LexicalComposerContext.Provider value={[props.initialEditor, context]}>
-      {!isCollabActive || isCollabReady() ? props.children : null}
+      {!collabContext?.isCollabActive || isCollabReady() ? props.children : null}
     </LexicalComposerContext.Provider>
   );
 }
