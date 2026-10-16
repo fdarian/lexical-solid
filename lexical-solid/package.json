@@ -84,10 +84,5 @@
   "peerDependencies": {
     "solid-js": "^1.7.11",
     "yjs": "^13.6.20"
-  },
-  "peerDependenciesMeta": {
-    "yjs": {
-      "optional": true
-    }
   }
 }
