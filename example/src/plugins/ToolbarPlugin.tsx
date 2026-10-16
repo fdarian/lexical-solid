@@ -12,18 +12,18 @@ import {
   $isRangeSelection,
   $createParagraphNode,
   $getNodeByKey,
-  RangeSelection,
-  ElementNode,
-  LexicalNode,
-  LexicalEditor,
+  mergeRegister,
+  type BaseSelection,
+  type LexicalEditor,
+  type RangeSelection,
 } from "lexical";
 import { $isLinkNode, TOGGLE_LINK_COMMAND } from "@lexical/link";
 import {
   $isParentElementRTL,
-  $wrapLeafNodesInElements,
+  $setBlocksType,
   $isAtNodeEnd,
 } from "@lexical/selection";
-import { $getNearestNodeOfType, mergeRegister } from "@lexical/utils";
+import { $getNearestNodeOfType } from "@lexical/utils";
 import {
   INSERT_ORDERED_LIST_COMMAND,
   INSERT_UNORDERED_LIST_COMMAND,
@@ -65,7 +65,7 @@ const supportedBlockTypes = new Set([
   "ol",
 ]);
 
-const blockTypeToBlockName = {
+const blockTypeToBlockName: Record<string, string> = {
   code: "Code Block",
   h1: "Large Heading",
   h2: "Small Heading",
@@ -82,7 +82,7 @@ function Divider() {
   return <div class="divider" />;
 }
 
-function positionEditorElement(editor, rect) {
+function positionEditorElement(editor: HTMLElement, rect: DOMRect | null) {
   if (rect === null) {
     editor.style.opacity = "0";
     editor.style.top = "-1000px";
@@ -95,13 +95,13 @@ function positionEditorElement(editor, rect) {
   }
 }
 
-function FloatingLinkEditor({ editor }) {
-  let editorRef!: HTMLDivElement;
-  let inputRef!: HTMLInputElement;
+function FloatingLinkEditor({ editor }: { editor: LexicalEditor }) {
+  let editorRef: HTMLDivElement | undefined;
+  let inputRef: HTMLInputElement | undefined;
   const mouseDownRef = false;
   const [linkUrl, setLinkUrl] = createSignal("");
   const [isEditMode, setEditMode] = createSignal(false);
-  const [lastSelection, setLastSelection] = createSignal(null);
+  const [lastSelection, setLastSelection] = createSignal<BaseSelection | null>(null);
 
   const updateLinkEditor = () => {
     const selection = $getSelection();
@@ -120,21 +120,22 @@ function FloatingLinkEditor({ editor }) {
     const nativeSelection = window.getSelection();
     const activeElement = document.activeElement;
 
-    if (editorElem === null) {
+    if (editorElem === undefined) {
       return;
     }
 
     const rootElement = editor.getRootElement();
     if (
       selection !== null &&
+      nativeSelection !== null &&
       !nativeSelection.isCollapsed &&
       rootElement !== null &&
       rootElement.contains(nativeSelection.anchorNode)
     ) {
       const domRange = nativeSelection.getRangeAt(0);
-      let rect;
+      let rect: DOMRect;
       if (nativeSelection.anchorNode === rootElement) {
-        let inner = rootElement;
+        let inner: Element = rootElement;
         while (inner.firstElementChild != null) {
           inner = inner.firstElementChild;
         }
@@ -146,7 +147,7 @@ function FloatingLinkEditor({ editor }) {
       if (!mouseDownRef) {
         positionEditorElement(editorElem, rect);
       }
-      setLastSelection(selection as RangeSelection);
+      setLastSelection(selection);
     } else if (!activeElement || activeElement.className !== "link-input") {
       positionEditorElement(editorElem, null);
       setLastSelection(null);
@@ -196,9 +197,9 @@ function FloatingLinkEditor({ editor }) {
           onKeyDown={(event) => {
             if (event.key === "Enter") {
               event.preventDefault();
-              if (lastSelection !== null) {
+              if (lastSelection() !== null) {
                 if (linkUrl() !== "") {
-                  editor.dispatchCommand(TOGGLE_LINK_COMMAND, linkUrl);
+                  editor.dispatchCommand(TOGGLE_LINK_COMMAND, linkUrl());
                 }
                 setEditMode(false);
               }
@@ -233,7 +234,7 @@ function FloatingLinkEditor({ editor }) {
 function Select(props: {
   onChange: JSX.EventHandlerUnion<HTMLSelectElement, Event>;
   class: string;
-  options: any;
+  options: string[];
   value: string;
 }) {
   return (
@@ -244,16 +245,13 @@ function Select(props: {
     >
       <option hidden={true} value="" />
       <For each={props.options}>
-        {(option) => (
-          //@ts-ignore
-          <option value={option}>{option}</option>
-        )}
+        {(option) => <option value={option}>{option}</option>}
       </For>
     </select>
   );
 }
 
-function getSelectedNode(selection) {
+function getSelectedNode(selection: RangeSelection) {
   const anchor = selection.anchor;
   const focus = selection.focus;
   const anchorNode = selection.anchor.getNode();
@@ -272,19 +270,19 @@ function getSelectedNode(selection) {
 function BlockOptionsDropdownList(props: {
   editor: LexicalEditor;
   blockType: string;
-  toolbarRef: HTMLDivElement;
+  toolbarRef: HTMLDivElement | undefined;
   setShowBlockOptionsDropDown: (val: boolean) => any;
 }) {
-  let dropDownRef!: HTMLDivElement;
+  let dropDownRef: HTMLDivElement | undefined;
 
   createEffect(() => {
     const toolbar = props.toolbarRef;
     const dropDown = dropDownRef;
 
-    if (toolbar !== null && dropDown !== null) {
-      const { top, left } = toolbar.getBoundingClientRect();
-      dropDown.style.top = `${top + 40}px`;
-      dropDown.style.left = `${left}px`;
+    if (toolbar !== undefined && dropDown !== undefined) {
+      const rect = toolbar.getBoundingClientRect();
+      dropDown.style.top = `${rect.top + 40}px`;
+      dropDown.style.left = `${rect.left}px`;
     }
   });
 
@@ -292,9 +290,13 @@ function BlockOptionsDropdownList(props: {
     const dropDown = dropDownRef;
     const toolbar = props.toolbarRef;
 
-    if (dropDown !== null && toolbar !== null) {
-      const handle = (event) => {
+    if (dropDown !== undefined && toolbar !== undefined) {
+      const handle = (event: MouseEvent) => {
         const target = event.target;
+
+        if (!(target instanceof Node)) {
+          return;
+        }
 
         if (!dropDown.contains(target) && !toolbar.contains(target)) {
           props.setShowBlockOptionsDropDown(false);
@@ -314,9 +316,7 @@ function BlockOptionsDropdownList(props: {
         const selection = $getSelection();
 
         if ($isRangeSelection(selection)) {
-          $wrapLeafNodesInElements(selection as RangeSelection, () =>
-            $createParagraphNode()
-          );
+          $setBlocksType(selection, () => $createParagraphNode());
         }
       });
     }
@@ -329,10 +329,7 @@ function BlockOptionsDropdownList(props: {
         const selection = $getSelection();
 
         if ($isRangeSelection(selection)) {
-          $wrapLeafNodesInElements(
-            selection as RangeSelection,
-            () => $createHeadingNode("h1") as any
-          );
+          $setBlocksType(selection, () => $createHeadingNode("h1"));
         }
       });
     }
@@ -345,10 +342,7 @@ function BlockOptionsDropdownList(props: {
         const selection = $getSelection();
 
         if ($isRangeSelection(selection)) {
-          $wrapLeafNodesInElements(
-            selection as RangeSelection,
-            () => $createHeadingNode("h2") as any
-          );
+          $setBlocksType(selection, () => $createHeadingNode("h2"));
         }
       });
     }
@@ -385,10 +379,7 @@ function BlockOptionsDropdownList(props: {
         const selection = $getSelection();
 
         if ($isRangeSelection(selection)) {
-          $wrapLeafNodesInElements(
-            selection as RangeSelection,
-            () => $createQuoteNode() as unknown as ElementNode
-          );
+          $setBlocksType(selection, () => $createQuoteNode());
         }
       });
     }
@@ -401,9 +392,7 @@ function BlockOptionsDropdownList(props: {
         const selection = $getSelection();
 
         if ($isRangeSelection(selection)) {
-          $wrapLeafNodesInElements(selection as RangeSelection, () =>
-            $createCodeNode()
-          );
+          $setBlocksType(selection, () => $createCodeNode());
         }
       });
     }
@@ -453,11 +442,11 @@ function BlockOptionsDropdownList(props: {
 
 export default function ToolbarPlugin() {
   const [editor] = useLexicalComposerContext();
-  let [toolbarRef, setToolbarRef] = createSignal<HTMLDivElement | undefined>();
+  const [toolbarRef, setToolbarRef] = createSignal<HTMLDivElement | undefined>();
   const [canUndo, setCanUndo] = createSignal(false);
   const [canRedo, setCanRedo] = createSignal(false);
   const [blockType, setBlockType] = createSignal("paragraph");
-  const [selectedElementKey, setSelectedElementKey] = createSignal(null);
+  const [selectedElementKey, setSelectedElementKey] = createSignal<string | null>(null);
   const [showBlockOptionsDropDown, setShowBlockOptionsDropDown] =
     createSignal(false);
   const [codeLanguage, setCodeLanguage] = createSignal("");
@@ -472,8 +461,7 @@ export default function ToolbarPlugin() {
   const updateToolbar = () => {
     const selection = $getSelection();
     if ($isRangeSelection(selection)) {
-      //@ts-ignore
-      const anchorNode: LexicalNode = selection.anchor.getNode();
+      const anchorNode = selection.anchor.getNode();
       const element =
         anchorNode.getKey() === "root"
           ? anchorNode
@@ -484,30 +472,25 @@ export default function ToolbarPlugin() {
         setSelectedElementKey(elementKey);
         if ($isListNode(element)) {
           const parentList = $getNearestNodeOfType(anchorNode, ListNode);
-          //@ts-ignore
           const type = parentList ? parentList.getTag() : element.getTag();
           setBlockType(type);
         } else {
           const type = $isHeadingNode(element)
-            ? //@ts-ignore
-            element.getTag()
+            ? element.getTag()
             : element.getType();
           setBlockType(type);
           if ($isCodeNode(element)) {
-            //@ts-ignore
             setCodeLanguage(element.getLanguage() || getDefaultCodeLanguage());
           }
         }
       }
       // Update text format
-      setIsBold((selection as RangeSelection).hasFormat("bold"));
-      setIsItalic((selection as RangeSelection).hasFormat("italic"));
-      setIsUnderline((selection as RangeSelection).hasFormat("underline"));
-      setIsStrikethrough(
-        (selection as RangeSelection).hasFormat("strikethrough")
-      );
-      setIsCode((selection as RangeSelection).hasFormat("code"));
-      setIsRTL($isParentElementRTL(selection as RangeSelection));
+      setIsBold(selection.hasFormat("bold"));
+      setIsItalic(selection.hasFormat("italic"));
+      setIsUnderline(selection.hasFormat("underline"));
+      setIsStrikethrough(selection.hasFormat("strikethrough"));
+      setIsCode(selection.hasFormat("code"));
+      setIsRTL($isParentElementRTL(selection));
 
       // Update links
       const node = getSelectedNode(selection);
@@ -535,7 +518,7 @@ export default function ToolbarPlugin() {
       mergeRegister(
         editor.registerCommand(
           SELECTION_CHANGE_COMMAND,
-          (_payload, newEditor) => {
+          () => {
             updateToolbar();
             return false;
           },
@@ -562,19 +545,25 @@ export default function ToolbarPlugin() {
   });
 
   const codeLanguges = createMemo(() => getCodeLanguages());
-  const onCodeLanguageSelect = (e) => {
+  const onCodeLanguageSelect = (
+    e: Event & { currentTarget: HTMLSelectElement }
+  ) => {
+    // currentTarget is cleared once the handler returns, before update() runs.
+    const language = e.currentTarget.value;
     editor.update(() => {
-      if (selectedElementKey !== null) {
-        const node = $getNodeByKey(selectedElementKey());
-        if ($isCodeNode(node)) {
-          (node as any).setLanguage(e.target.value);
-        }
+      const key = selectedElementKey();
+      if (key === null) {
+        return;
+      }
+      const node = $getNodeByKey(key);
+      if ($isCodeNode(node)) {
+        node.setLanguage(language);
       }
     });
   };
 
   const insertLink = () => {
-    if (!isLink) {
+    if (!isLink()) {
       editor.dispatchCommand(TOGGLE_LINK_COMMAND, "https://");
     } else {
       editor.dispatchCommand(TOGGLE_LINK_COMMAND, null);
