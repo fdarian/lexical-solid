@@ -1,5 +1,5 @@
 import type { EditorSetOptions, EditorState } from "lexical";
-import { JSX, createEffect, createSignal } from "solid-js";
+import { JSX, createEffect, createSignal, onCleanup } from "solid-js";
 import type { LexicalCommandLog } from "./useLexicalCommandsLog";
 
 const LARGE_EDITOR_STATE_SIZE = 1000;
@@ -117,9 +117,9 @@ export const TreeView = (props: {
 
       play();
 
-      return () => {
+      onCleanup(() => {
         clearTimeout(timeoutId);
-      };
+      });
     }
   });
 
