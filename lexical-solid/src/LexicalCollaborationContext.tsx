@@ -1,5 +1,5 @@
 import { Doc } from "yjs";
-import { createContext, DEV, JSX, useContext } from "solid-js";
+import { createContext, createSignal, DEV, JSX, useContext } from "solid-js";
 
 export type CollaborationContextType = {
   color: string;
@@ -41,13 +41,104 @@ function getRandomEntry(): (typeof entries)[number] {
 export const CollaborationContext =
   createContext<CollaborationContextType | null>(null);
 
+/**
+ * @lexical/yjs writes into this Map directly through binding.docMap, so it has
+ * to stay a real Map instance; reactivity is layered on by overriding the
+ * accessors rather than wrapping it.
+ */
+class ReactiveDocMap extends Map<string, Doc> {
+  // Must not be constructed with entries: Map's constructor would call
+  // `this.set` before these fields are initialized.
+  private readonly track: () => void;
+  private readonly notify: () => void;
+
+  constructor() {
+    super();
+    const [version, setVersion] = createSignal(undefined, { equals: false });
+    this.track = () => {
+      version();
+    };
+    this.notify = () => {
+      setVersion();
+    };
+  }
+
+  override get size(): number {
+    this.track();
+    return super.size;
+  }
+
+  override has(key: string): boolean {
+    this.track();
+    return super.has(key);
+  }
+
+  override get(key: string): Doc | undefined {
+    this.track();
+    return super.get(key);
+  }
+
+  override forEach(
+    callbackfn: (value: Doc, key: string, map: Map<string, Doc>) => void,
+    thisArg?: unknown
+  ): void {
+    this.track();
+    super.forEach(callbackfn, thisArg);
+  }
+
+  override keys(): MapIterator<string> {
+    this.track();
+    return super.keys();
+  }
+
+  override values(): MapIterator<Doc> {
+    this.track();
+    return super.values();
+  }
+
+  override entries(): MapIterator<[string, Doc]> {
+    this.track();
+    return super.entries();
+  }
+
+  override [Symbol.iterator](): MapIterator<[string, Doc]> {
+    this.track();
+    return super[Symbol.iterator]();
+  }
+
+  override set(key: string, value: Doc): this {
+    super.set(key, value);
+    this.notify();
+    return this;
+  }
+
+  override delete(key: string): boolean {
+    const deleted = super.delete(key);
+    this.notify();
+    return deleted;
+  }
+
+  override clear(): void {
+    super.clear();
+    this.notify();
+  }
+}
+
 export function newContext(): CollaborationContextType {
   const [name, color] = getRandomEntry();
+  const [isCollabActive, setIsCollabActive] = createSignal(false);
   return {
     color,
-    isCollabActive: false,
+    // Signal-backed so consumers (e.g. LexicalNestedComposer) can react to
+    // writes made by plain assignment.
+    get isCollabActive() {
+      return isCollabActive();
+    },
+    set isCollabActive(value: boolean) {
+      setIsCollabActive(value);
+    },
     name,
-    yjsDocMap: new Map(),
+    yjsDocMap: new ReactiveDocMap(),
   };
 }
 

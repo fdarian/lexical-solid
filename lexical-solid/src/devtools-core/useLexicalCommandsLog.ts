@@ -1,7 +1,7 @@
 import type { LexicalEditor } from "lexical";
 
 import { COMMAND_PRIORITY_CRITICAL, LexicalCommand } from "lexical";
-import { Accessor, createSignal, onCleanup, onMount } from "solid-js";
+import { Accessor, createEffect, createSignal, onCleanup } from "solid-js";
 
 export type LexicalCommandEntry = { index: number } & LexicalCommand<unknown> & {
     payload: unknown;
@@ -40,15 +40,18 @@ export function registerLexicalCommandLogger(
 }
 
 export function useLexicalCommandsLog(
-  editor: LexicalEditor
+  editor: LexicalEditor | Accessor<LexicalEditor>
 ): Accessor<LexicalCommandLog> {
   const [loggedCommands, setLoggedCommands] = createSignal<LexicalCommandLog>(
     []
   );
 
-  onMount(() =>
-    onCleanup(registerLexicalCommandLogger(editor, setLoggedCommands))
-  );
+  // The log is kept across editor changes, like upstream: only the listeners
+  // move to the new editor.
+  createEffect(() => {
+    const currentEditor = typeof editor === "function" ? editor() : editor;
+    onCleanup(registerLexicalCommandLogger(currentEditor, setLoggedCommands));
+  });
 
   return loggedCommands;
 }

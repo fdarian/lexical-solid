@@ -1,10 +1,16 @@
 import type { EditorSetOptions, EditorState } from "lexical";
-import { JSX, createEffect, createSignal } from "solid-js";
+import {
+  JSX,
+  createEffect,
+  createSignal,
+  mergeProps,
+  onCleanup,
+} from "solid-js";
 import type { LexicalCommandLog } from "./useLexicalCommandsLog";
 
 const LARGE_EDITOR_STATE_SIZE = 1000;
 
-export const TreeView = (props: {
+export const TreeView = (rawProps: {
   editorState: EditorState;
   treeTypeButtonClassName?: string;
   timeTravelButtonClassName?: string;
@@ -18,6 +24,7 @@ export const TreeView = (props: {
   commandsLog?: LexicalCommandLog;
   ref: (_: HTMLPreElement) => void;
 }): JSX.Element => {
+  const props = mergeProps({ commandsLog: [] as LexicalCommandLog }, rawProps);
   const [timeStampedEditorStates, setTimeStampedEditorStates] = createSignal<
     Array<[number, EditorState]>
   >([]);
@@ -117,9 +124,9 @@ export const TreeView = (props: {
 
       play();
 
-      return () => {
+      onCleanup(() => {
         clearTimeout(timeoutId);
-      };
+      });
     }
   });
 
