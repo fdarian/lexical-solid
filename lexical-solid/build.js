@@ -23,6 +23,7 @@ const externals = [
   '@lexical/clipboard',
   '@lexical/code',
   '@lexical/dragon',
+  '@lexical/extension',
   '@lexical/hashtag',
   '@lexical/history',
   '@lexical/html',

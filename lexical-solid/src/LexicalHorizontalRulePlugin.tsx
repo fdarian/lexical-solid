@@ -11,6 +11,10 @@ import {
 } from "lexical";
 import { onCleanup } from "solid-js";
 
+/**
+ * @deprecated A pure Lexical implementation is available in `@lexical/extension`
+ * as HorizontalRuleExtension
+ */
 export function HorizontalRulePlugin(): null {
   const [editor] = useLexicalComposerContext();
 
