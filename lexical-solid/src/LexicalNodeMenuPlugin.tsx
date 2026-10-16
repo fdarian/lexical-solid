@@ -13,6 +13,7 @@ import {
   createSignal,
   createEffect,
   startTransition,
+  onCleanup,
   Show,
 } from "solid-js";
 
@@ -89,11 +90,13 @@ export function LexicalNodeMenuPlugin<TOption extends MenuOption>(
 
   createEffect(() => {
     if (props.nodeKey != null) {
-      return editor.registerUpdateListener(({ dirtyElements }) => {
-        if (dirtyElements.get(props.nodeKey!)) {
-          positionOrCloseMenu();
-        }
-      });
+      onCleanup(
+        editor.registerUpdateListener(({ dirtyElements }) => {
+          if (dirtyElements.get(props.nodeKey!)) {
+            positionOrCloseMenu();
+          }
+        })
+      );
     }
   });
 
