@@ -81,7 +81,7 @@ export function BlockWithAlignableContents(props: Props): JSX.Element {
                 clearSelection();
               }
 
-              setSelected(!isSelected);
+              setSelected(!isSelected());
               return true;
             }
 
