@@ -90,8 +90,9 @@ export class HorizontalRuleNode extends BaseHorizontalRuleNode {
     });
   }
 
-  decorate(): JSX.Element {
-    return <HorizontalRuleComponent nodeKey={this.__key} />;
+  decorate(): () => JSX.Element {
+    const nodeKey = this.__key;
+    return () => <HorizontalRuleComponent nodeKey={nodeKey} />;
   }
 }
 

@@ -1,20 +1,22 @@
 import { LexicalEditor, NodeKey } from "lexical";
 import {
+  createComponent,
+  createEffect,
   createMemo,
   createSignal,
-  onMount,
-  JSX,
-  Component,
-  Accessor,
-  createComponent,
-  Suspense,
+  mapArray,
   onCleanup,
+  onMount,
+  Suspense,
+  Accessor,
+  Component,
+  JSX,
 } from "solid-js";
-import { Dynamic, Portal } from "solid-js/web";
+import { insert } from "solid-js/web";
 
 type ErrorBoundaryProps = {
   children: JSX.Element;
-  onError: (err: any, reset: () => void) => JSX.Element;
+  onError: (error: Error) => void;
 };
 export type ErrorBoundaryType = Component<ErrorBoundaryProps>;
 
@@ -33,8 +35,8 @@ export function useDecorators(
     })
   );
 
-  // Decorator portals mount into elements that only exist once the editor has
-  // a root element, so the portals must be recomputed when it changes.
+  // Decorators mount into elements that only exist once the editor has a root
+  // element, so they must be remounted when it changes.
   const [rootElement, setRootElement] = createSignal<HTMLElement | null>(
     editor.getRootElement()
   );
@@ -51,34 +53,49 @@ export function useDecorators(
     setDecorators(editor.getDecorators<() => JSX.Element>());
   });
 
-  // Return decorators defined as React Portals
-  return createMemo(() => {
-    // Declare a dependency on the root element so the portals are recomputed
-    // when it changes.
-    rootElement();
-    const decoratedPortals = [];
-    const decoratorKeys = Object.keys(decorators());
+  const onError = (error: Error) => editor._onError(error);
 
-    for (let i = 0; i < decoratorKeys.length; i++) {
-      const nodeKey = decoratorKeys[i];
-      const decorator = (
-        <ErrorBoundary
-          onError={(error, reset) => editor._onError(error) as undefined}
-        >
-          <Suspense fallback={null}>
-            <Dynamic component={decorators()[nodeKey]} />
-          </Suspense>
-        </ErrorBoundary>
+  // Each key mounts its decorator straight into the node's host element. The
+  // mount is keyed on the host element and the decorator function identity, so
+  // a key remounts only when one of those changes: lexical only re-calls
+  // `decorate()` for dirty nodes, which keeps the other decorators alive when
+  // a node is added or removed.
+  return mapArray(
+    () => Object.keys(decorators()),
+    (nodeKey) => {
+      const target = createMemo(
+        () => {
+          rootElement();
+          return {
+            element: editor.getElementByKey(nodeKey),
+            decorator: decorators()[nodeKey],
+          };
+        },
+        undefined,
+        {
+          equals: (prev, next) =>
+            prev.element === next.element && prev.decorator === next.decorator,
+        }
       );
-      const element = editor.getElementByKey(nodeKey);
 
-      if (element !== null) {
-        decoratedPortals.push(
-          createComponent(Portal, { mount: element, children: decorator })
-        );
-      }
+      createEffect(() => {
+        const element = target().element;
+        if (element === null) {
+          return;
+        }
+        const decorator = target().decorator;
+        insert(element, () => (
+          <ErrorBoundary onError={onError}>
+            <Suspense fallback={null}>{createComponent(decorator, {})}</Suspense>
+          </ErrorBoundary>
+        ));
+        // Same as what Solid's `render` does when disposed.
+        onCleanup(() => {
+          element.textContent = "";
+        });
+      });
+
+      return null;
     }
-
-    return decoratedPortals;
-  });
+  );
 }

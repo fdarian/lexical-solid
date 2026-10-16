@@ -10,7 +10,6 @@ import {
   onMount,
   splitProps,
 } from "solid-js";
-import { useLexicalComposerContext } from "../LexicalComposerContext";
 
 /**
  * Props for the {@link ContentEditableElement} component. In addition to an
@@ -50,16 +49,19 @@ export function ContentEditableElement(props: ContentEditableElementProps): JSX.
   props = mergeProps(
     {
       role: "textbox" as JSX.HTMLAttributes<HTMLDivElement>["role"],
-      spellCheck: true,
+      spellcheck: true,
     },
     props
   );
   const [, rest] = splitProps(props, [
+    "editor",
     "ariaActiveDescendant",
     "ariaAutoComplete",
     "ariaControls",
     "ariaDescribedBy",
+    "ariaErrorMessage",
     "ariaExpanded",
+    "ariaInvalid",
     "ariaLabel",
     "ariaLabelledBy",
     "ariaMultiline",
@@ -75,7 +77,7 @@ export function ContentEditableElement(props: ContentEditableElementProps): JSX.
     "style",
     "tabIndex",
   ]);
-  const [editor] = useLexicalComposerContext();
+  const editor = props.editor;
   const [isEditable, setEditable] = createSignal(editor.isEditable());
 
   const handleRef = (rootElement: null | HTMLElement) => {
@@ -94,6 +96,8 @@ export function ContentEditableElement(props: ContentEditableElementProps): JSX.
       }
     });
   };
+
+  onCleanup(() => editor.setRootElement(null));
 
   createEffect(() => {
     setEditable(editor.isEditable());
