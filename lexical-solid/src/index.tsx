@@ -36,7 +36,7 @@ export * from "./LexicalTablePlugin";
 export * from "./LexicalTreeView";
 export * from "./LexicalTypeaheadMenuPlugin";
 export * from "./useLexicalEditable";
-export * from "./useLexicalIsContentEmpty";
+export * from "./useLexicalIsTextContentEmpty";
 export * from "./useLexicalNodeSelection";
 export * from "./useLexicalSubscription";
 export * from "./useLexicalTextEntity";
