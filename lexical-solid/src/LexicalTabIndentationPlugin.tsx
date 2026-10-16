@@ -13,6 +13,8 @@ export { registerTabIndentation };
  * users, causing focus to become trapped within the editor.
  */
 export function TabIndentationPlugin(props: {
+  maxIndent?: number;
+  /** @deprecated Use maxIndent */
   maxIdent?: number;
   /**
    * By default, indents are set on all elements for which the {@link ElementNode.canIndent} returns true.
@@ -24,7 +26,11 @@ export function TabIndentationPlugin(props: {
 
   createEffect(() => {
     onCleanup(
-      registerTabIndentation(editor, props.maxIdent, props.$canIndent)
+      registerTabIndentation(
+        editor,
+        props.maxIndent ?? props.maxIdent,
+        props.$canIndent
+      )
     );
   });
 
