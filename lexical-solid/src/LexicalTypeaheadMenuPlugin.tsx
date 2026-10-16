@@ -28,7 +28,6 @@ import {
   createSignal,
   Show,
   JSX,
-  startTransition,
   onCleanup,
   onMount,
 } from "solid-js";
@@ -218,8 +217,7 @@ export function LexicalTypeaheadMenuPlugin<TOption extends MenuOption>(
   const [resolution, setResolution] = createSignal<MenuResolution | null>(null);
   let openGeneration = 0;
   // Whether the menu is open as far as onOpen/onClose are concerned. Unlike
-  // `resolution`, this sees an open whose transition has not rendered yet and
-  // a close whose onClose promise is still pending.
+  // `resolution`, this stays true while a close's onClose promise is pending.
   let isOpen = false;
 
   const closeTypeahead = () => {
@@ -246,7 +244,7 @@ export function LexicalTypeaheadMenuPlugin<TOption extends MenuOption>(
   };
 
   const openTypeahead = (res: MenuResolution) => {
-    // Track pending opens before their transition has rendered.
+    // Invalidates a close still waiting on its onClose promise.
     openGeneration++;
     setResolution(res);
     if (!isOpen) {
@@ -319,12 +317,10 @@ export function LexicalTypeaheadMenuPlugin<TOption extends MenuOption>(
               editor.getRootElement()
             );
             if (isRangePositioned) {
-              startTransition(() =>
-                openTypeahead({
-                  getRect: () => range.getBoundingClientRect(),
-                  match,
-                })
-              );
+              openTypeahead({
+                getRect: () => range.getBoundingClientRect(),
+                match,
+              });
               return;
             }
           }

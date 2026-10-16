@@ -12,7 +12,6 @@ import {
   type JSX,
   createSignal,
   createEffect,
-  startTransition,
   onCleanup,
   Show,
 } from "solid-js";
@@ -73,11 +72,9 @@ export function LexicalNodeMenuPlugin<TOption extends MenuOption>(
         const domElement = editor.getElementByKey(props.nodeKey!);
         if (node != null && domElement != null) {
           if (resolution() === null) {
-            startTransition(() =>
-              openNodeMenu({
-                getRect: () => domElement.getBoundingClientRect(),
-              })
-            );
+            openNodeMenu({
+              getRect: () => domElement.getBoundingClientRect(),
+            });
           }
         }
       });
