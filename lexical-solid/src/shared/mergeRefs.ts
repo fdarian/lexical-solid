@@ -1,7 +1,11 @@
 export function mergeRefs<T>(
-  ...refs: Array<(arg: T) => void | undefined | null>
+  ...refs: Array<((arg: T) => void) | undefined | null>
 ): (arg: T) => void {
   return (value) => {
-    refs.forEach((ref) => ref(value));
+    for (const ref of refs) {
+      if (typeof ref === "function") {
+        ref(value);
+      }
+    }
   };
 }

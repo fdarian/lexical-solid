@@ -1,7 +1,9 @@
 import {
-  LexicalEditor,
-  LexicalNode,
+  type LexicalEditor,
+  type LexicalNode,
+  $findMatchingParent,
   $getSelection,
+  $getSlotHost,
   $isLeafNode,
   $isRangeSelection,
   $isTextNode,
@@ -9,6 +11,8 @@ import {
   DELETE_CHARACTER_COMMAND,
   COMMAND_PRIORITY_LOW,
   $isElementNode,
+  HISTORY_MERGE_TAG,
+  mergeRegister,
 } from "lexical";
 import {
   $createOverflowNode,
@@ -16,9 +20,9 @@ import {
   OverflowNode,
 } from "@lexical/overflow";
 import { $rootTextContent } from "@lexical/text";
-import { $dfs, $unwrapNode, mergeRegister } from "@lexical/utils";
+import { $dfsWithSlots, $unwrapNode } from "@lexical/utils";
 import { MaybeAccessor, resolve } from "../utils";
-import { createEffect, onCleanup, onMount } from "solid-js";
+import { createEffect, onCleanup, onMount, untrack } from "solid-js";
 
 type OptionalProps = {
   remainingCharacters?: (characters: number) => void;
@@ -47,8 +51,43 @@ export function useCharacterLimit(
   });
 
   createEffect(() => {
-    let text = editor.getEditorState().read($rootTextContent);
-    let lastComputedTextLength = 0;
+    const maxChars = resolve(maxCharacters);
+    let text = editor.read("latest", $rootTextContent);
+    let lastComputedTextLength: null | number = null;
+
+    // Not `$`-prefixed: this runs outside an update/read context (from the
+    // effect body and from listener callbacks) and opens its own
+    // editor.update() for the OverflowNode wrapping.
+    function updateCharacterLimit(): void {
+      const textLength = strlen(text);
+      const textLengthAboveThreshold =
+        textLength > maxChars ||
+        (lastComputedTextLength !== null && lastComputedTextLength > maxChars);
+      const diff = maxChars - textLength;
+
+      remainingCharacters(diff);
+
+      if (lastComputedTextLength === null || textLengthAboveThreshold) {
+        const offset = findOffset(text, maxChars, strlen);
+        editor.update(
+          () => {
+            $wrapOverflowedNodes(offset);
+          },
+          {
+            tag: HISTORY_MERGE_TAG,
+          }
+        );
+      }
+
+      lastComputedTextLength = textLength;
+    }
+
+    // Derive the count from the content that is already there before
+    // subscribing. registerUpdateListener does not fire on registration, so
+    // otherwise both the reported count and the OverflowNode wrapping stay at
+    // their initial values until the next edit. Untracked so that signals read
+    // by the user's `strlen`/`remainingCharacters` don't re-run this effect.
+    untrack(updateCharacterLimit);
 
     onCleanup(
       mergeRegister(
@@ -64,28 +103,7 @@ export function useCharacterLimit(
             return;
           }
 
-          const textLength = strlen(text);
-          const textLengthAboveThreshold =
-            textLength > resolve(maxCharacters) ||
-            (lastComputedTextLength !== null &&
-              lastComputedTextLength > resolve(maxCharacters));
-          const diff = resolve(maxCharacters) - textLength;
-
-          remainingCharacters(diff);
-
-          if (lastComputedTextLength === null || textLengthAboveThreshold) {
-            const offset = findOffset(text, resolve(maxCharacters), strlen);
-            editor.update(
-              () => {
-                $wrapOverflowedNodes(offset);
-              },
-              {
-                tag: "history-merge",
-              }
-            );
-          }
-
-          lastComputedTextLength = textLength;
+          updateCharacterLimit();
         }),
         editor.registerCommand(
           DELETE_CHARACTER_COMMAND,
@@ -120,12 +138,11 @@ function findOffset(
   maxCharacters: number,
   strlen: (input: string) => number
 ): number {
-  const Segmenter = Intl.Segmenter;
   let offsetUtf16 = 0;
   let offset = 0;
 
-  if (typeof Segmenter === "function") {
-    const segmenter = new Segmenter();
+  if (typeof Intl.Segmenter === "function") {
+    const segmenter = new Intl.Segmenter();
     const graphemes = segmenter.segment(text);
 
     for (const { segment: grapheme } of graphemes) {
@@ -158,13 +175,38 @@ function findOffset(
   return offsetUtf16;
 }
 
-function $wrapOverflowedNodes(offset: number): void {
-  const dfsNodes = $dfs();
+export function $wrapOverflowedNodes(offset: number): void {
+  // $dfsWithSlots (not $dfs) so slot-bearing hosts contribute their slot
+  // subtree text to the character count and overflow wrapping. Without this
+  // a slot-host (e.g. Card with title/body) would report 0 characters and
+  // overflow logic would never wrap slotted content.
+  const dfsNodes = $dfsWithSlots();
   const dfsNodesLength = dfsNodes.length;
   let accumulatedLength = 0;
 
   for (let i = 0; i < dfsNodesLength; i += 1) {
     const { node } = dfsNodes[i];
+
+    // ElementNode.getTextContent() inserts '\n\n' after each non-inline
+    // element child that is not the last child. findOffset counts those
+    // separators (via $rootTextContent), so the DFS must count them too.
+    const prevSibling = node.getPreviousSibling();
+    if ($isElementNode(prevSibling) && !prevSibling.isInline()) {
+      accumulatedLength += 2;
+    }
+
+    // Slot value roots (a non-inline DecoratorNode slotted into a host) are
+    // leaf nodes with __parent === null; wrapping them in OverflowNode would
+    // call node.replace() and throw, so they stay out of the wrap loop. Their
+    // text still funds `offset` (root text content folds slotted decorator
+    // text in via getSlotsTextContent), so the budget is advanced for them
+    // below. Element slot values need no special case: their interior is
+    // counted leaf-by-leaf like any other subtree.
+    const isSlotValueLeaf = $isLeafNode(node) && $getSlotHost(node) !== null;
+    const needsOverflowParent =
+      $isLeafNode(node) &&
+      !isSlotValueLeaf &&
+      !$findMatchingParent(node, $isOverflowNode);
 
     if ($isOverflowNode(node)) {
       const previousLength = accumulatedLength;
@@ -207,7 +249,11 @@ function $wrapOverflowedNodes(offset: number): void {
           $unwrapNode(node);
         }
       }
-    } else if ($isLeafNode(node)) {
+    } else if (isSlotValueLeaf) {
+      // Skipped by the wrap loop, but its text is part of the offset budget;
+      // without this the wrap boundary lands late by the decorator's size.
+      accumulatedLength += node.getTextContentSize();
+    } else if (needsOverflowParent) {
       const previousAccumulatedLength = accumulatedLength;
       accumulatedLength += node.getTextContentSize();
 
@@ -235,6 +281,10 @@ function $wrapOverflowedNodes(offset: number): void {
         }
 
         $mergePrevious(overflowNode);
+        const nextNode = overflowNode.getNextSibling();
+        if ($isOverflowNode(nextNode)) {
+          $mergePrevious(nextNode);
+        }
       }
     }
   }
@@ -272,7 +322,7 @@ export function $mergePrevious(overflowNode: OverflowNode): void {
     const anchor = selection.anchor;
     const anchorNode = anchor.getNode();
     const focus = selection.focus;
-    const focusNode = anchor.getNode();
+    const focusNode = focus.getNode();
 
     if (anchorNode.is(previousNode)) {
       anchor.set(overflowNode.getKey(), anchor.offset, "element");
