@@ -4,15 +4,16 @@ import {
   registerHistory,
 } from "@lexical/history";
 import { LexicalEditor } from "lexical";
-import { createEffect, Accessor, onCleanup } from "solid-js";
+import { createEffect, createMemo, Accessor, onCleanup } from "solid-js";
 
 export function useHistory(
   editor: LexicalEditor,
   externalHistoryState: Accessor<HistoryState | undefined>,
   delay: Accessor<number | undefined> | undefined
 ) {
-  const historyState = () =>
-    externalHistoryState() || createEmptyHistoryState();
+  const historyState = createMemo(
+    () => externalHistoryState() || createEmptyHistoryState()
+  );
 
   createEffect(() => {
     onCleanup(
