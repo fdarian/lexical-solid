@@ -29,6 +29,15 @@ export function PlainTextPlugin(params: {
 
 type ContentFunction = (isEditable: boolean) => null | JSX.Element;
 
+// The caller reads `editable()` so the placeholder re-renders on toggle;
+// only the user's function runs untracked, so signals it reads incidentally don't subscribe.
+function renderPlaceholder(
+  content: ContentFunction,
+  isEditable: boolean
+): null | JSX.Element {
+  return untrack(() => content(isEditable));
+}
+
 // TODO remove
 function Placeholder(props: {
   content: ContentFunction | null | JSX.Element;
@@ -44,7 +53,7 @@ function Placeholder(props: {
         when={typeof content() === "function"}
         fallback={content() as JSX.Element}
       >
-        {untrack(() => (content() as ContentFunction)(editable()))}
+        {renderPlaceholder(content() as ContentFunction, editable())}
       </Show>
     </Show>
   );
